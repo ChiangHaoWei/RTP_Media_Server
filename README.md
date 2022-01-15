@@ -2,8 +2,8 @@
 computer networks term project
 
 ## 分工
-server 江
-client 林
+server 江  
+client 林  
 GUI & read 翁
 
 ## 現成 code
