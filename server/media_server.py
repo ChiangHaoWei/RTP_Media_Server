@@ -1,9 +1,8 @@
 import socket
-from urllib.parse import urlparse
 from uuid import uuid4
 
 from server.host import Host
-from server.utils import rtsp_header_parser, rtsp_response_generator
+from server.utils import rtsp_header_parser, rtsp_response_generator, bad_response
 from typing import Any, Dict, List, Tuple
 
 class MediaServer:
@@ -23,9 +22,14 @@ class MediaServer:
     header = rtsp_header_parser(message)
     print(f"Receive request from client: {addr}")
     print(message)
+
     if header["method"] == "SETUP":
+      # session if
       session = str(uuid4()) if "Session" not in header else header["Session"]
+      # client info
       client_info = Host(addr[0], addr[1], session)
+      client_info.path = header["path"]
+      # transport
       trans_info = header["Transport"].split(";")
       for value in trans_info:
         if value.startswith("RTP/AVP/TCP"):
@@ -34,7 +38,9 @@ class MediaServer:
           client_info.client_port = int(value[value.find("=")+1:value.find("-")])
           assert client_info.client_port % 2 == 0
           client_info.server_port = self.available_port.pop()
+      # store client information
       self.clients[session] = client_info
+      # response
       res_header = {
         "version": header["version"],
         "CSeq": header["CSeq"],
@@ -43,7 +49,13 @@ class MediaServer:
       }
       response = rtsp_response_generator(res_header)
     elif header["method"] == "PLAY":
-      pass
+      if ("Session" not in header) or (header["Session"] not in self.clients):
+        print(f"Client {addr} must send SETUP request before PLAY")
+        response = bad_response()
+      else:
+        # TODO
+        pass        
+
 
   
   def rtsp_server(self):
@@ -54,5 +66,7 @@ class MediaServer:
       except socket.timeout:
         pass
       else:
+        # TODO
+        pass
         
           
