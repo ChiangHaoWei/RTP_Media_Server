@@ -24,6 +24,8 @@ class Client:
         self.frame_buffer_v = []
         heapq.heapify(self.frame_buffer_v)
         self.frame_buffer_a = []
+        self.time_stamp_v = 0
+        self.time_stamp_a = 0
         heapq.heapify(self.frame_buffer_a)
 
         self.session_id_v:str=None
@@ -142,7 +144,7 @@ class Client:
             if not self._frame_buffer_v:
                 return None
             # omit until time reached
-            while self._frame_buffer_v[0][0] < self.time_stamp:
+            while self._frame_buffer_v[0][0] < self.time_stamp_v:
                 heapq.heappop(self.frame_buffer_v)[1]
             # give the frame of desired time
             output = heapq.heappop(self.frame_buffer_v)[1]
@@ -151,7 +153,7 @@ class Client:
         elif type == 2:
             if not self._frame_buffer_a:
                 return None
-            while self._frame_buffer_a[0][0] < self.time_stamp:
+            while self._frame_buffer_a[0][0] < self.time_stamp_a:
                 heapq.heappop(self.frame_buffer_a)[1]
             output = heapq.heappop(self.frame_buffer_a)[1]
             self.time_stamp = output[0]
@@ -186,6 +188,7 @@ class Client:
 
 
     def send_setup_command(self):
+        self.send_describe_command()
         res = self._send_rtsp_request("SETUP", type=1)
         if not res or res['code'] != '200':
             return
@@ -206,9 +209,18 @@ class Client:
         res = self._send_rtsp_request("DESBRIBE", type=2)
         if not res or res['code'] != '200':
             return
-        # format: a=length:npt=7.741000
-        self.video_length = res['a=length'].split('=')[1]
-        return self.video_length
+        
+        # video meta
+        self.length_v = res['length_v']
+        self.samplewidth_v = res['Samplewidth_v']
+        self.channels_v = res['Channels_v']
+        self.fps_v = res['FPS_v']
+        
+        # audio meta
+        self.length_a = res['length_a']
+        self.samplewidth_a = res['Samplewidth_a']
+        self.channels_a = res['Channels_a']
+        self.fps_a = res['FPS_a']
 
     def send_play_command(self, start=None):
         # alter time -> start = that time
