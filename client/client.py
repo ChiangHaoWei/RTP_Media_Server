@@ -1,5 +1,7 @@
+from io import BytesIO
 import socket
 from threading import Thread
+import time
 from PIL import Image
 from client.utils import rtsp_request_generator, rtp_response_parser
 
@@ -32,12 +34,12 @@ class Client:
         self._rtsp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # connect socket to address port
         self._rtsp_socket.connect((self.host_addr, self.host_port))
-        self._rtsp_socket.settimeout(RTSP_TIMEOUT)
+        self._rtsp_socket.settimeout(self.RTSP_TIMEOUT)
         # timeout
         # self.rtsp_socket.settimeout(rtsp_timeout)
         self.is_rtsp_connected = True
 
-    def _receive_rtp_packet(self, size = self.FRAME_SIZE, type):
+    def _receive_rtp_packet(self,type, size = FRAME_SIZE):
         recv_bstr = bytes() # bstr
         # receive until EOF -> a full packet
         while 1:
@@ -46,7 +48,7 @@ class Client:
                     temp = self._rtp_socket_v.recv(size)
                 elif type == 2:
                     temp = self._rtp_socket_a.recv(size)
-                if temp.endswith(EOF)
+                if temp.endswith(self.EOF):
                     break
             except socket.timeout:
                 continue
@@ -60,11 +62,11 @@ class Client:
         # video
         self._rtp_socket_v = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._rtp_socket_v.bind((self.localhost, self.rtp_port_v))
-        self._rtp_socket_v.settimeout(RTP_TIMEOUT)
+        self._rtp_socket_v.settimeout(self.RTP_TIMEOUT)
         # audio
         self._rtp_socket_a = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._rtp_socket_a.bind((self.localhost, self.rtp_port_a))
-        self._rtp_socket_a.settimeout(RTP_TIMEOUT)
+        self._rtp_socket_a.settimeout(self.RTP_TIMEOUT)
         # timeout
         # self._rtp_socket.settimeout()
 
@@ -72,7 +74,7 @@ class Client:
         # format: (time_stamp, frame)
         while 1:
             if not self.is_playing:
-                sleep(1)
+                time.sleep(1)
 
             # video
             packet = self._receive_rtp_packet(type=1)

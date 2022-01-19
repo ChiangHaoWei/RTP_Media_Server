@@ -14,16 +14,15 @@ class VideoStream:
     self.path = path
     self.cap = cv2.VideoCapture(path)
     self.fps = self.cap.get(cv2.CAP_PROP_FPS)
-    self.frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    self.frame_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
 
   def get_payload(self, timestamp:int) -> bytes:
     self.cap.set(cv2.CAP_PROP_POS_FRAMES, timestamp)
     ret, frame = self.cap.read()
     if not ret:
         print("frame read failed")
-        break
 
-    return bytes(frame)+EOF
+    return bytes(frame)+self.EOF
 
   def close(self):
     self.cap.release()

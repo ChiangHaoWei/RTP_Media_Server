@@ -21,7 +21,7 @@ class AudioStream:
   def get_payload(self, timestamp:int) -> bytes:
     self.wave_file.setpos(timestamp)
     frame = self.wave_file.readframes(1)
-    return frame + EOF
+    return frame + self.EOF
 
   def close(self):
     self.wave_file.close()
