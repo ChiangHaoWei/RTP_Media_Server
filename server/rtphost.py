@@ -48,7 +48,7 @@ class RTPHost:
     if not self.playing:
       self.playing = True
       self.job = threading.Thread(target=self.send_rtp_packet)
-    
+      self.job.setDaemon(True)
   def pause(self):
     if self.playing:
       self.playing = False

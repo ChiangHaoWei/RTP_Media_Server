@@ -2,8 +2,10 @@ from io import BytesIO
 import socket
 from threading import Thread
 import time
+import heapq
+from typing import List
 from PIL import Image
-from client.utils import rtsp_request_generator, rtp_response_parser
+from client.utils import rtsp_request_generator, rtp_response_parser, rtsp_reponse_parser
 
 class Client:
     localhost = '127.0.0.1'
@@ -24,7 +26,12 @@ class Client:
         self.frame_buffer_a = []
         heapq.heapify(self.frame_buffer_a)
 
-        self.session_id = None
+        self.session_id_v:str=None
+        self.session_id_a:str=None
+        self.frame_buffer_v:List[bytes] = []
+        heapq.heapify(self.frame_buffer_v)
+        self._frame_buffer_a:List[bytes] = []
+        heapq.heapify(self._frame_buffer_a)
 
     # setup
     def start_rtsp_connection(self):
@@ -72,7 +79,7 @@ class Client:
 
         # receive frame, add to frame buffer, a min heap
         # format: (time_stamp, frame)
-        while 1:
+        while True:
             if not self.is_playing:
                 time.sleep(1)
 
@@ -89,7 +96,7 @@ class Client:
 
     # create a parallel thread for _receive_video 
     def _start_receive_video_thread(self):
-        self.receive_video_thread = Thread(target = _receive_video)
+        self.receive_video_thread = Thread(target = self._receive_video)
         self.receive_video_thread.setDaemon(True) # auto terminated with process
         self.receive_video_thread.start()
 
@@ -101,29 +108,29 @@ class Client:
             print("rtsp connection not created")
             return False
         request_dict = dict()
-        request['command'] = command
+        request_dict['command'] = command
         if _type == 1:
-            request['file_path'] = self.file_path_v
-            request['CSeq'] = self.seq_num_v
+            request_dict['file_path'] = self.file_path_v
+            request_dict['CSeq'] = self.seq_num_v
             client_port = self.rtp_port_v
             if self.session_id_v:
-                request['Session'] = self.session_id_v
+                request_dict['Session'] = self.session_id_v
             self.seq_num_v += 1
         elif _type == 2:
-            request['file_path'] = self.file_path_a
-            request['CSeq'] = self.seq_num_a
-            request['client_port'] = self.rtp_port_a
+            request_dict['file_path'] = self.file_path_a
+            request_dict['CSeq'] = self.seq_num_a
+            request_dict['client_port'] = self.rtp_port_a
             if self.session_id_a:
-                request['Session'] = self.session_id_a
+                request_dict['Session'] = self.session_id_a
             self.seq_num_a += 1
         setup_type = None
         if command == 'SETUP':
-            request['Transport'] = f'RTP/UDP;unicast;client_port={client_port}'
+            request_dict['Transport'] = f'RTP/UDP;unicast;client_port={client_port}'
             setup_type = _type
         elif command == 'PLAY' and start:
-            request['Range'] = f'npt={start}-'
+            request_dict['Range'] = f'npt={start}-'
         request_bstr = rtsp_request_generator(request_dict, setup_type)
-        self._rtsp_socket.send(command_request)
+        self._rtsp_socket.send(request_bstr)
         return self._get_response()
 
     def get_next_frame(self, type):
@@ -211,12 +218,12 @@ class Client:
             self.frame_buffer_a = []
             heapq.heapify(self.frame_buffer_a)
         # no start passed -> normal play request, start at where it's left off
-        res = self._send_rtsp_request("PLAY", type=1, start)
+        res = self._send_rtsp_request("PLAY", type=1, start=start)
         if not res or res['code'] != '200':
             return
         self.session_id_v = res['session_id']
 
-        res = self._send_rtsp_request("PLAY", type=2, start)
+        res = self._send_rtsp_request("PLAY", type=2, start=start)
         if not res or res['code'] != '200':
             return
 
@@ -247,10 +254,11 @@ class Client:
         self.is_rtsp_connected = False
     # </commands>
 
-    def _get_response(self, size = self.FRAME_SIZE):
-        while 1:
+    def _get_response(self, size = FRAME_SIZE):
+        while True:
             try:
                 recv = self._rtsp_socket.recv(size)
+                break
             except socket.timeout:
                 continue
         response = rtsp_reponse_parser()

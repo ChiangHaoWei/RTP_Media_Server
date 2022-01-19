@@ -22,7 +22,7 @@ def rtsp_reponse_parser(res_bstr):
     # res_dict['CSeq'] = res_lines[1].split(' ')[1]
     return res_dict
 
-def rtp_response_parser(packet_bstr):
+def rtp_response_parser(packet_bstr:bytes):
     packet_str = packet_bstr.decode()
     header_size = 12
     header = packet_str[:header_size]

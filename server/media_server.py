@@ -176,6 +176,7 @@ class MediaServer:
             t.join()
         self.buffer.append(threading.Thread(target=self.handle_on_client, args=(client, addr)))
         self.buffer[-1].start()
+        self.buffer[-1].setDaemon(True)
       self.check_timeout()
 
 if __name__ == "__main__":
