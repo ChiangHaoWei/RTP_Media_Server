@@ -27,127 +27,132 @@ class MediaServer:
     self.rtsp_socket.listen(5)
   
   def handle_on_client(self, client:socket.socket, addr:Tuple[str, int]):
-    message = client.recv(4096).decode('utf-8')
-    header = rtsp_header_parser(message)
-    print(f"Receive request from client: {addr}")
-    print(message)
-    try:
-      # SETUP
-      if header["method"] == "SETUP":
-        if len(self.available_port) == 0:
-          response = bad_response(code="503 Service Unavailable")
-        else:
-          # session if
-          session = str(uuid4()) if "Session" not in header else header["Session"]
-          # client info
-          client_info = RTPHost(addr[0], addr[1], session)
-          client_info.path = header["path"]
+    
+    while True:
+      message = client.recv(4096).decode('utf-8')
+      header = rtsp_header_parser(message)
+      print(f"Receive request from client: {addr}")
+      print(message)
+      try:
+        # SETUP
+        if header["method"] == "SETUP":
+          if len(self.available_port) == 0:
+            response = bad_response(code="503 Service Unavailable")
+          else:
+            # session if
+            session = str(uuid4()) if "Session" not in header else header["Session"]
+            # client info
+            client_info = RTPHost(addr[0], addr[1], session)
+            client_info.path = header["path"]
+            try:
+              client_info.play_place, client_info.end_place = get_info(header["url"])
+            except:
+              response = bad_response(code="404 Not Found")
+            else:
+              # transport
+              trans_info = header["Transport"].split(";")
+              for value in trans_info:
+                if value.startswith("RTP/AVP/TCP"):
+                  client_info.type = "TCP"
+                elif value.startswith("client_port"):
+                  client_info.client_port = int(value[value.find("=")+1:value.find("-")])
+                  assert client_info.client_port % 2 == 0
+                  client_info.server_port = self.available_port.pop()
+              # RTP stream
+              if "streamid" in header["param"] and header["param"]["streamid"][0] == "0":
+                client_info.stream = AudioStream(header["path"])
+              else:
+                client_info.stream = VideoStream(header["path"])
+              # store client information
+              self.clients[session] = client_info
+              # response
+              res_header = {
+                "version": header["version"],
+                "CSeq": header["CSeq"],
+                "Transport": header["Transport"]+f";server_port:{client_info.server_port}-{client_info.server_port+1}",
+                "Session": client_info.session
+              }
+              response = rtsp_response_generator(res_header)
+        elif header["method"] == "DESCRIBE":
           try:
-            client_info.play_place, client_info.end_place = get_info(header["url"])
+            sdp_info = sdp_generator(header["path"])
           except:
             response = bad_response(code="404 Not Found")
           else:
-            # transport
-            trans_info = header["Transport"].split(";")
-            for value in trans_info:
-              if value.startswith("RTP/AVP/TCP"):
-                client_info.type = "TCP"
-              elif value.startswith("client_port"):
-                client_info.client_port = int(value[value.find("=")+1:value.find("-")])
-                assert client_info.client_port % 2 == 0
-                client_info.server_port = self.available_port.pop()
-            # RTP stream
-            if "streamid" in header["param"] and header["param"]["streamid"][0] == "0":
-              client_info.stream = AudioStream(header["path"])
-            else:
-              client_info.stream = VideoStream(header["path"])
-            # store client information
-            self.clients[session] = client_info
-            # response
             res_header = {
               "version": header["version"],
               "CSeq": header["CSeq"],
-              "Transport": header["Transport"]+f";server_port:{client_info.server_port}-{client_info.server_port+1}",
-              "Session": client_info.session
+              "Content-Base": header["url"],
+              "Content-Type": "application/sdp",
+              "Content-Length": str(len(sdp_info))
             }
+            if "Session" in header:
+              self.clients[header["Session"]].updata_time()
+            response = rtsp_response_generator(res_header) + sdp_info
+        elif header["method"] == "PLAY":
+          if ("Session" not in header) or (header["Session"] not in self.clients):
+            print(f"Client {addr} must send SETUP request before PLAY")
+            response = bad_response(code="454 Session Not Found")
+          else:
+            session = header["Session"]
+            # get start time and end time
+            if "Range" in header:
+              vars = variable_parser(header["Range"])
+              if "npt" in vars:
+                se = vars["npt"].split("-")
+                self.clients[session].play_place = int(se[0])
+                try:
+                  self.clients[session].end_place = int(se[1])
+                except ValueError:
+                  pass
+                except:
+                  raise
+            self.clients[session].play()
+            res_header = {
+              "version":header["version"],
+              "CSeq":header["CSeq"],
+              "Session":session,
+              "RTP-Info":f"url={header['url']};seq={self.clients[session].seq_num};rtptime={self.clients[session].play_place}"
+            }
+            self.clients[session].updata_time()
             response = rtsp_response_generator(res_header)
-      elif header["method"] == "DESCRIBE":
-        try:
-          sdp_info = sdp_generator(header["path"])
-        except:
-          response = bad_response(code="404 Not Found")
+        elif header["method"] == "PAUSE":
+          if ("Session" not in header) or (header["Session"] not in self.clients):
+            print(f"Client {addr} must send SETUP request before PLAY")
+            response = bad_response(code="454 Session Not Found")
+          else:
+            session = header["Session"]
+            self.clients[session].pause()
+            res_header = {
+              "version": header["version"],
+              "CSeq": header["CSeq"],
+              "Session": session
+            }
+            self.clients[session].updata_time()
+            response = rtsp_response_generator(res_header)
+        elif header["method"] == "TEARDOWN":
+          if ("Session" not in header) or (header["Session"] not in self.clients):
+            print(f"Client {addr} must send SETUP request before PLAY")
+            response = bad_response(code="454 Session Not Found")
+          else:
+            session = header["Session"]
+            self.clients[session].stop()
+            res_header = {
+              "version": header["version"],
+              "CSeq": header["CSeq"]
+            }
+            self.available_port.append(self.clients[session].server_port)
+            del self.clients[session]
+            
+            response = rtsp_response_generator(res_header)
+            client.send(response)
+            break
         else:
-          res_header = {
-            "version": header["version"],
-            "CSeq": header["CSeq"],
-            "Content-Base": header["url"],
-            "Content-Type": "application/sdp",
-            "Content-Length": str(len(sdp_info))
-          }
-          if "Session" in header:
-            self.clients[header["Session"]].updata_time()
-          response = rtsp_response_generator(res_header) + sdp_info
-      elif header["method"] == "PLAY":
-        if ("Session" not in header) or (header["Session"] not in self.clients):
-          print(f"Client {addr} must send SETUP request before PLAY")
-          response = bad_response(code="454 Session Not Found")
-        else:
-          session = header["Session"]
-          # get start time and end time
-          if "Range" in header:
-            vars = variable_parser(header["Range"])
-            if "npt" in vars:
-              se = vars["npt"].split("-")
-              self.clients[session].play_place = int(se[0])
-              try:
-                self.clients[session].end_place = int(se[1])
-              except ValueError:
-                pass
-              except:
-                raise
-          self.clients[session].play()
-          res_header = {
-            "version":header["version"],
-            "CSeq":header["CSeq"],
-            "Session":session,
-            "RTP-Info":f"url={header['url']};seq={self.clients[session].seq_num};rtptime={self.clients[session].play_place}"
-          }
-          self.clients[session].updata_time()
-          response = rtsp_response_generator(res_header)
-      elif header["method"] == "PAUSE":
-        if ("Session" not in header) or (header["Session"] not in self.clients):
-          print(f"Client {addr} must send SETUP request before PLAY")
-          response = bad_response(code="454 Session Not Found")
-        else:
-          session = header["Session"]
-          self.clients[session].pause()
-          res_header = {
-            "version": header["version"],
-            "CSeq": header["CSeq"],
-            "Session": session
-          }
-          self.clients[session].updata_time()
-          response = rtsp_response_generator(res_header)
-      elif header["method"] == "TEARDOWN":
-        if ("Session" not in header) or (header["Session"] not in self.clients):
-          print(f"Client {addr} must send SETUP request before PLAY")
-          response = bad_response(code="454 Session Not Found")
-        else:
-          session = header["Session"]
-          self.clients[session].stop()
-          res_header = {
-            "version": header["version"],
-            "CSeq": header["CSeq"]
-          }
-          self.available_port.append(self.clients[session].server_port)
-          del self.clients[session]
-          response = rtsp_response_generator(res_header)
-      else:
-        response = bad_response(code="405 Method Not Allowed")
-    except:
-      response = bad_response()
-    # send response to client
-    client.send(response)
+          response = bad_response(code="405 Method Not Allowed")
+      except:
+        response = bad_response()
+      # send response to client
+      client.send(response)
     print(f"Client {addr} disconnect")
     client.close()  
 
