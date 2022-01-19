@@ -33,6 +33,7 @@ class RTPHost:
     print(f"RTP server start at port {self.server_port}")
     assert self.end_place >= self.play_place
     while self.playing and (self.play_place < self.end_place):
+      print(f"Send packet #{self.seq_num} with timestamp={self.play_place}")
       payload = self.stream.get_payload(self.play_place)
       packet = rtp_packet_generator(self.seq_num, self.play_place, payload)
       self.play_place += 1
