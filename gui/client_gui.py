@@ -18,13 +18,15 @@ import pyaudio
 
 class ClientWindow(QMainWindow):
     _update_image_signal = pyqtSignal()
+    _update_audio_signal = pyqtSignal()
 
     def __init__(
             self,
             file_name: str,
             host_address: str,
             host_port: int,
-            rtp_port: int,
+            rtp_port_v: int,
+            rtp_port_a: int,
             parent=None):
         super(ClientWindow, self).__init__(parent)
         self.nframe = 0
@@ -43,7 +45,7 @@ class ClientWindow(QMainWindow):
         self.tear_button = QPushButton()
         self.error_label = QLabel()
 
-        self._media_client = Client(file_name, host_address, host_port, rtp_port)
+        self._media_client = Client(file_name, host_address, host_port, rtp_port_v, rtp_port_a)
         self._update_image_signal.connect(self.update_image)
         self._update_image_timer = QTimer()
         self._update_image_timer.timeout.connect(self._update_image_signal.emit)
@@ -105,7 +107,7 @@ class ClientWindow(QMainWindow):
         if not self._media_client.is_playing:
             return
 
-        if self._media_client.time_stamp_v / self.meiad_client.fps_v > self._media_client.time_stamp_a / self._media_client.fps_a + 0.01:
+        if self._media_client.time_stamp_v / self._media_client.fps_v > self._media_client.time_stamp_a / (self._media_client.fps_a/1) + 0.01:
             return
 
         frame = self._media_client.get_next_frame(type = 1)
@@ -123,7 +125,7 @@ class ClientWindow(QMainWindow):
         if not self._media_client.is_playing:
             return
         
-        if self._media_client.time_stamp_a / self.meiad_client.fps_a > self._media_client.time_stamp_v / self._media_client.fps_v + 0.01:
+        if self._media_client.time_stamp_a / (self._media_client.fps_a/1) > self._media_client.time_stamp_v / self._media_client.fps_v + 0.01:
             return
 
         frame = self._media_client.get_next_frame(type = 2)
@@ -134,8 +136,8 @@ class ClientWindow(QMainWindow):
 
 
     def handle_setup(self):
-        self._media_client.establish_rtsp_connection()
-        self._media_client.send_setup_request()
+        self._media_client.start_rtsp_connection()
+        self._media_client.send_setup_command()
         self.positionSlider.setRange(0, 10)
         #self.positionSlider.valueChanged.connect(self.valuechange)
         '''
@@ -148,29 +150,29 @@ class ClientWindow(QMainWindow):
         self.setup_button.setEnabled(False)
         self.play_button.setEnabled(True)
         self.tear_button.setEnabled(True)
-        self._update_image_timer.start(1000//self.media_client.fps_v)
-        self._update_audio_timer.start(1000//self.media_client.fps_a)
+        self._update_image_timer.start(1000//self._media_client.fps_v)
+        self._update_audio_timer.start(1000//self._media_client.fps_a)
         self.py_audio = pyaudio.PyAudio()
-        self.stream = self.py_audio.open(format = self._media_client.samplewidth,
-                       channels = self.media_client.channels,
-                       rate = self.media_client.fps_a,
+        self.stream = self.py_audio.open(format = self._media_client.samplewidth_a,
+                       channels = self._media_client.channels_a,
+                       rate = self._media_client.fps_a,
                        output=True)
 
     def handle_play(self):
         if self.state == 'pause':
-            self._media_client.send_play_request()
+            self._media_client.send_play_command()
             self.state = 'play'
             self.play_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
         elif self.state == 'play':
-            self._media_client.send_pause_request()
+            self._media_client.send_pause_command()
             self.state = 'pause'
             self.play_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
     def handle_teardown(self):
-        self._media_client.send_teardown_request()
+        self._media_client.send_teardown_command()
         self.setup_button.setEnabled(True)
         self.play_button.setEnabled(False)
-        self.pause_button.setEnabled(False)
+        # self.pause_button.setEnabled(False)
         exit(0)
 
     def positionChanged(self, position):
@@ -190,6 +192,6 @@ class ClientWindow(QMainWindow):
 
     def handle_error(self):
         self.play_button.setEnabled(False)
-        self.pause_button.setEnabled(False)
+        # self.pause_button.setEnabled(False)
         self.tear_button.setEnabled(False)
-        self.error_label.setText(f"Error: {self.media_player.errorString()}")
+        # self.error_label.setText(f"Error: {self._media_player.errorString()}")

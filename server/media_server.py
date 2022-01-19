@@ -48,7 +48,7 @@ class MediaServer:
             client_info = RTPHost(addr[0], addr[1], session)
             client_info.path = header["path"]
             try:
-              client_info.play_place, client_info.end_place, _, _ = get_info(header["url"])
+              client_info.play_place, client_info.end_place, _, _ = get_info(header["path"])
             except:
               response = bad_response(code="404 Not Found")
             else:

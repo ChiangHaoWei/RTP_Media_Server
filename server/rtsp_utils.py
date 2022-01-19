@@ -13,7 +13,7 @@ def rtsp_header_parser(request:str) -> Dict[str, str]:
   header["method"] = first_line[0].strip().upper()
   header["url"] = first_line[1].strip()
   header["version"] = first_line[2].strip()
-  header["path"] = urlparse(first_line[1].strip()).path
+  header["path"] = urlparse(first_line[1].strip()).path.strip('/')
   header["param"] = parse_qs(urlparse(first_line[1].strip()).query)
   for i in range(1, len(lines)):
     line = lines[i].strip().split(':')

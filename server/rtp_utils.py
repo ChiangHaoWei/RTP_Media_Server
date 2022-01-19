@@ -31,4 +31,4 @@ def rtp_packet_generator(sequence_number:int, timestamp:int, payload:bytes, payl
       *fourth_to_seventh_bytes,
       *eigth_to_eleventh_bytes,
   ))
-  return header
+  return header+payload

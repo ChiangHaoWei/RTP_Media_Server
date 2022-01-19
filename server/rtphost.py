@@ -31,6 +31,7 @@ class RTPHost:
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((self.SERVER, self.server_port))
     print(f"RTP server start at port {self.server_port}")
+    print(f"Send RTP packet to client at ({self.addr}, {self.client_port})")
     assert self.end_place >= self.play_place
     while self.playing and (self.play_place < self.end_place):
       print(f"Send packet #{self.seq_num} with timestamp={self.play_place}")
@@ -41,6 +42,8 @@ class RTPHost:
         self.seq_num = 0
       else:
         self.seq_num += 1
+      assert packet.find(b'\xff\xd9') != -1, "not end with EOF"
+      print(f"Packet Size: {len(packet)}")
       s.sendto(packet, (self.addr, self.client_port))
     self.playing = False
     s.close()
@@ -49,6 +52,7 @@ class RTPHost:
       self.playing = True
       self.job = threading.Thread(target=self.send_rtp_packet)
       self.job.setDaemon(True)
+      self.job.start()
   def pause(self):
     if self.playing:
       self.playing = False

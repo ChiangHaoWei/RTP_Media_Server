@@ -1,8 +1,8 @@
-def rtsp_request_generator(req_dict, setup_type=None):
+def rtsp_request_generator(host_addr, req_dict, setup_type=None):
     version = "RTSP/1.0"
     if setup_type:
         req_dict['file_path'] += f"?streamid={setup_type}"
-    req_str = f"{req_dict['command']} rtsp://{req_dict['file_path']} {version}"
+    req_str = f"{req_dict['command']} rtsp://{host_addr}/{req_dict['file_path']} {version}\r\n"
 
     for key in req_dict:
         if key in {'command', 'file_path', 'port'}:
@@ -15,7 +15,7 @@ def rtsp_response_parser(res_bstr):
     res_lines = res_bstr.decode().split('\r\n')
     res_code = res_lines[0].split(' ')[1]
     res_dict = dict()
-    res_dict['res_code'] = res_code
+    res_dict['code'] = res_code
     is_video = True
     for line in res_lines[1:]:
         # SDP line
@@ -69,6 +69,7 @@ def rtp_response_parser(packet_bstr:bytes):
 def sdp_variable_parser(line):
     # format 1: a=AvgBitRate:integer;304018
     # format 2: a=length:npt=7.712000
+    
     if ':' not in line:
         return
     line = line.split(':')
@@ -77,8 +78,8 @@ def sdp_variable_parser(line):
     line[0] = line[0].split('=')
     if ';' in line[1]: # format 1
         line[1] = line[1].split(';')
-    elif ':' in line[1]: # format 2
-        line[1] = line[1].split(':')
+    elif '=' in line[1]: # format 2
+        line[1] = line[1].split('=')
     else:
         return
     key = line[0][1]
