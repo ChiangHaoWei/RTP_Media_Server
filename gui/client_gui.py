@@ -150,8 +150,8 @@ class ClientWindow(QMainWindow):
         self.tear_button.setEnabled(True)
         self._update_image_timer.start(1000//self.media_client.fps_v)
         self._update_audio_timer.start(1000//self.media_client.fps_a)
-
-        self.stream = py_audio.open(format = self._media_client.samplewidth),
+        self.py_audio = pyaudio.PyAudio()
+        self.stream = self.py_audio.open(format = self._media_client.samplewidth,
                        channels = self.media_client.channels,
                        rate = self.media_client.fps_a,
                        output=True)
