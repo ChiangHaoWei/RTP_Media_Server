@@ -2,6 +2,8 @@ import socket
 from uuid import uuid4
 import threading
 import time
+from client.audio_stream import AudioStream
+from client.video_stream import VideoStream, get_info
 
 from server.rtphost import RTPHost
 from server.rtsp_utils import rtsp_header_parser, rtsp_response_generator, bad_response, sdp_generator, variable_parser
@@ -48,9 +50,14 @@ class MediaServer:
             client_info.client_port = int(value[value.find("=")+1:value.find("-")])
             assert client_info.client_port % 2 == 0
             client_info.server_port = self.available_port.pop()
+        # RTP stream
+        if "streamid" in header["param"] and header["param"]["streamid"][0] == "0":
+          client_info.stream = AudioStream(header["path"])
+        else:
+          client_info.stream = VideoStream(header["path"])
         # store client information
+        client_info.play_place, client_info.end_place = get_info(header["url"])
         self.clients[session] = client_info
-        # TODO update end-place in host
         # response
         res_header = {
           "version": header["version"],
@@ -90,11 +97,11 @@ class MediaServer:
             except:
               raise
         self.clients[session].play()
-        # TODO RTP-info
         res_header = {
           "version":header["version"],
           "CSeq":header["CSeq"],
-          "Session":session
+          "Session":session,
+          "RTP-Info":f"url={header['url']};seq={self.clients[session].seq_num};rtptime={self.clients[session].play_place}"
         }
         self.clients[session].updata_time()
         response = rtsp_response_generator(res_header)

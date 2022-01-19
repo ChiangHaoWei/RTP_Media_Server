@@ -1,5 +1,5 @@
 from ctypes import Union
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 import datetime
 from typing import Dict, List
 
@@ -14,6 +14,7 @@ def rtsp_header_parser(request:str) -> Dict[str, str]:
   header["url"] = first_line[1].strip()
   header["version"] = first_line[2].strip()
   header["path"] = urlparse(first_line[1].strip()).path
+  header["param"] = parse_qs(urlparse(first_line[1].strip()).query)
   for i in range(1, len(lines)):
     line = lines[i].strip().split(':')
     header[line[0].strip()] = line[1].strip()
