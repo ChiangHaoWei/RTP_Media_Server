@@ -1,5 +1,4 @@
 import wave
-from pydub import AudioSegment
 import pyaudio
 
 class AudioStream:
@@ -7,10 +6,7 @@ class AudioStream:
 
   def __init__(self, path:str) -> None:
     self.path = path
-    audio = AudioSegment.from_file(path, "mp4")
-    file_name = path.strip('mp4')
-    audio.export(f"{file_name}.wav", format="wav")
-
+    file_name = path[:path.find(".mp4")]
     wave_file = wave.open(f'{file_name}.wav', 'rb')
     self.wave_file = wave_file
 

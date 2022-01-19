@@ -1,10 +1,18 @@
 from typing import Tuple
 import cv2
+import wave
 
-def get_info(path:str) -> Tuple[int, int]:
+def get_info(path:str) -> Tuple[int, int, int, dict]:
     cap = cv2.VideoCapture(path)
+    video_fps = cap.get(cv2.CAP_PROP_FPS)
+    wave_file = wave.open(f"{path[:path.find('.mp4')]}.wav", 'rb')
+
+    audio_info = {"samplewidth": int(wave_file.getsampwidth()), 
+    "channels": int(wave_file.getnchannels()),
+    "fps": int(wave_file.getframerate())
+    }
     frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    return (0, frame_count)
+    return (0, frame_count, video_fps, audio_info)
 
 
 class VideoStream:
