@@ -29,10 +29,13 @@ class MediaServer:
   def handle_on_client(self, client:socket.socket, addr:Tuple[str, int]):
     
     while True:
-      message = client.recv(4096).decode('utf-8')
-      header = rtsp_header_parser(message)
-      print(f"Receive request from client: {addr}")
-      print(message)
+      try:
+        message = client.recv(4096).decode('utf-8')
+        header = rtsp_header_parser(message)
+        print(f"Receive request from client: {addr}")
+        print(message)
+      except socket.timeout:
+        continue
       try:
         # SETUP
         if header["method"] == "SETUP":
