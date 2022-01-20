@@ -1,3 +1,4 @@
+
 from PyQt5.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton
 #import QSlider, Style, Qt
@@ -9,6 +10,8 @@ from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import pyqtSignal, QTimer
 from PIL.ImageQt import ImageQt
+from PIL import Image
+import cv2
 
 from client.client import Client
 #from utils.video_stream import VideoStream
@@ -118,7 +121,11 @@ class ClientWindow(QMainWindow):
         if frame is not None:
             print("received frame!")
             print(type(frame))
-            pix = QPixmap.fromImage(ImageQt(frame))
+            decode_frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+            image = Image.fromarray(decode_frame)
+            # cv2.imshow("frame", decode_frame)
+            
+            pix = QPixmap.fromImage(ImageQt(image).copy())
             self.video_player.setPixmap(pix)
             self._media_client.time_stamp_v += 1
 
@@ -178,6 +185,7 @@ class ClientWindow(QMainWindow):
         self._media_client.send_teardown_command()
         self.setup_button.setEnabled(True)
         self.play_button.setEnabled(False)
+        cv2.destroyAllWindows()
         # self.pause_button.setEnabled(False)
         exit(0)
 

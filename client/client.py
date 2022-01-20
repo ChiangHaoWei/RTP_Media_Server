@@ -13,7 +13,7 @@ import pyaudio
 
 class Client:
     localhost = '127.0.0.1'
-    FRAME_SIZE = 4096
+    FRAME_SIZE = 2**16
     RTSP_TIMEOUT = 100/1000
     RTP_TIMEOUT = 5/1000
     EOF = b'\xff\xff\xd0\xff\xd0\xff'
@@ -117,13 +117,13 @@ class Client:
                     # bytes to np
                     frame_np = np.frombuffer(frame_raw, dtype=np.uint8)
                     # cv2 uncompress
-                    frame_raw_np = cv2.imdecode(frame_np, cv2.IMREAD_COLOR)
+                    # frame_raw_np = cv2.imdecode(frame_np, cv2.IMREAD_COLOR)
                     print("frame size", len(frame_raw))
                     # np to bytes
-                    frame = Image.fromarray(frame_raw_np)
+                    # frame = Image.fromarray(frame_raw_np)
                     # frame = Image.frombytes(frame_raw)
                     time_stamp = packet['time_stamp']
-                    return time_stamp, frame
+                    return time_stamp, frame_np
                 # for audio, play it out
                 elif(_type == 2):
                     # print(f'playing ... {len(frame_raw)}\n')

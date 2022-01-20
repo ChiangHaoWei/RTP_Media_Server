@@ -11,7 +11,7 @@ from typing import Union
 class RTPHost:
   SERVER = "127.0.0.1"
   EOF = b'\xff\xff\xd0\xff\xd0\xff'
-  MAX_PACKET_SIZE = 2**11
+  MAX_PACKET_SIZE = 2**15
   def __init__(self, addr:str, port:int, session:str) -> None:
     self.addr = addr
     self.port = port
