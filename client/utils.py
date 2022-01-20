@@ -78,7 +78,7 @@ def rtp_response_parser(packet_bstr:bytes):
     res_dict['total'] = CSRC
 
     res_dict['payload'] = payload
-    print(res_dict)
+    # print(res_dict)
     return res_dict
 
 def sdp_variable_parser(line):
