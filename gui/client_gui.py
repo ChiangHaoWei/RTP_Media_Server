@@ -117,7 +117,7 @@ class ClientWindow(QMainWindow):
         #self.positionSlider.setValue(timestamp)
         if frame is not None:
             print("received frame!")
-            pix = QPixmap.fromImage(ImageQt(frame[0]).copy())
+            pix = QPixmap.fromImage(ImageQt(frame).copy())
             self.video_player.setPixmap(pix)
             self._media_client.time_stamp_v += 1
 
@@ -130,6 +130,7 @@ class ClientWindow(QMainWindow):
 
         frame = self._media_client.get_next_frame(type = 2)
         if frame is not None:
+            print("audio frame", frame)
             self.stream.write(frame)
             self._media_client.time_stamp_a += 1
 

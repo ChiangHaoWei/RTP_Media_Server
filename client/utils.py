@@ -46,7 +46,7 @@ def rtsp_response_parser(res_bstr):
 
 def rtp_response_parser(packet_bstr:bytes):
     packet_str = packet_bstr # bit manipulation so no need decoding
-    header_size = 12
+    header_size = 16
     header = packet_str[:header_size]
     payload = packet_str[header_size:]
     # header
@@ -74,10 +74,11 @@ def rtp_response_parser(packet_bstr:bytes):
     # number of total packets
     CSRC = 0
     for i in range(12,16):
-        CCRC |= header[i] << 8 * (15 - i)
+        CSRC |= header[i] << 8 * (15 - i)
     res_dict['total'] = CSRC
 
     res_dict['payload'] = payload
+    print(res_dict)
     return res_dict
 
 def sdp_variable_parser(line):
