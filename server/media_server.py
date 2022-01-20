@@ -36,6 +36,8 @@ class MediaServer:
         print(message)
       except socket.timeout:
         continue
+      except ConnectionError:
+        break
       try:
         # SETUP
         if header["method"] == "SETUP":
@@ -149,7 +151,6 @@ class MediaServer:
             
             response = rtsp_response_generator(res_header)
             client.send(response)
-            break
         else:
           response = bad_response(code="405 Method Not Allowed")
       except:
@@ -165,7 +166,7 @@ class MediaServer:
     timeouts = list()
     for key, host in self.clients.items():
       if time.time()-host.time > self.TIME_OUT:
-        print(f"Client ({host.addr}, {host.port}) with session id {host.session} timeout")
+        print(f"Client ({host.addr}, {host.port}, {type(host.stream)}) with session id {host.session} timeout")
         timeouts.append(key)
     for key in timeouts:
       self.clients[key].stop()

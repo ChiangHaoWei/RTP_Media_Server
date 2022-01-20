@@ -9,7 +9,7 @@ from client.utils import rtsp_request_generator, rtp_response_parser, rtsp_respo
 
 class Client:
     localhost = '127.0.0.1'
-    FRAME_SIZE = 1024
+    FRAME_SIZE = 4096
     RTSP_TIMEOUT = 100/1000
     RTP_TIMEOUT = 5/1000
     EOF = b'\xff\xd9'

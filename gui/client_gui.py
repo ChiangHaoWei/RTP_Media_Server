@@ -128,11 +128,11 @@ class ClientWindow(QMainWindow):
         if self._media_client.time_stamp_a / (self._media_client.fps_a/1) > self._media_client.time_stamp_v / self._media_client.fps_v + 0.01:
             return
 
-        frame = self._media_client.get_next_frame(type = 2)
-        if frame is not None:
-            print("audio frame", frame)
-            self.stream.write(frame)
-            self._media_client.time_stamp_a += 1
+        # frame = self._media_client.get_next_frame(type = 2)
+        # if frame is not None:
+        #     print("audio frame", frame)
+        #     self.stream.write(frame)
+        #     self._media_client.time_stamp_a += 1
 
 
 
