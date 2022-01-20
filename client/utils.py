@@ -1,7 +1,8 @@
 def rtsp_request_generator(host_addr, req_dict, setup_type=None):
     version = "RTSP/1.0"
     if setup_type:
-        req_dict['file_path'] += f"?streamid={setup_type}"
+        # streamid=0 for video, 1 for audio
+        req_dict['file_path'] += f"?streamid={setup_type-1}"
     req_str = f"{req_dict['command']} rtsp://{host_addr}/{req_dict['file_path']} {version}\r\n"
 
     for key in req_dict:
@@ -53,8 +54,8 @@ def rtp_response_parser(packet_bstr:bytes):
     # (B2) M 1b, Payload Type 7b
     # (B3:B4) Seq Num 16b
     # (B5:B8) Time Stamp 32b
-    # (B9:B12) SSI 32b
-    # (ommitted) (B13:B16) CI 32b
+    # (B9:B12) SSRC 32b
+    # (B13:B16) CSRC 32b
     res_dict = dict()
     # B3:B4
     res_dict['seq_num'] = header[2] << 8 | header[3]
@@ -63,6 +64,19 @@ def rtp_response_parser(packet_bstr:bytes):
     for i in range(4,8):
         time_stamp |= header[i] << 8 * (7 - i)
     res_dict['time_stamp'] = time_stamp
+    # B9:B12
+    # index of packet
+    SSRC = 0
+    for i in range(8,12):
+        SSRC |= header[i] << 8 * (11 - i)
+    res_dict['ind'] = SSRC
+    # B13:B16
+    # number of total packets
+    CSRC = 0
+    for i in range(12,16):
+        CCRC |= header[i] << 8 * (15 - i)
+    res_dict['total'] = CSRC
+
     res_dict['payload'] = payload
     return res_dict
 

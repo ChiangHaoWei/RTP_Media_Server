@@ -36,3 +36,7 @@ CSRC not needed
 > To be honest, I have never seen anyone actually use SSRC or CSRC in any meaningful way. In all the code I've dealt with, we just generate a random number in SSRC and don't never bother filling in CSRC. 
 
 https://stackoverflow.com/a/21951323/15493213
+
+## video convertion
+<http://zulko.github.io/blog/2013/09/27/read-and-write-video-frames-in-python-using-ffmpeg/>  
+`ffmpeg -i my-input.mp4 my-output.mjpeg`

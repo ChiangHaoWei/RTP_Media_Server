@@ -23,19 +23,15 @@ class Client:
         self.rtp_port_a = rtp_port_a
         self.seq_num_v = 0
         self.seq_num_a = 0
-        self.frame_buffer_v = []
-        heapq.heapify(self.frame_buffer_v)
-        self.frame_buffer_a = []
         self.time_stamp_v = 0
         self.time_stamp_a = 0
-        heapq.heapify(self.frame_buffer_a)
-
         self.session_id_v:str=None
         self.session_id_a:str=None
-        self.frame_buffer_v:List[bytes] = []
-        heapq.heapify(self.frame_buffer_v)
-        self._frame_buffer_a:List[bytes] = []
-        heapq.heapify(self._frame_buffer_a)
+        self.frame_buffer_v = heapq.heapify([])
+        self.frame_buffer_a = heapq.heapify([])
+        self.packet_buffer_v = heapq.heapify([])
+        self.packet_buffer_a = heapq.heapify([])
+
 
     # setup
     def start_rtsp_connection(self):
@@ -63,53 +59,75 @@ class Client:
                 index = temp.find(self.EOF)
                 print(temp)
                 if index != -1:
+                    # full packet received
                     print("receive a rtp packet")
                     recv_bstr += temp[:index]
                     return rtp_response_parser(recv_bstr), temp[index+len(self.EOF):]
                 recv_bstr += temp
             except socket.timeout:
                 continue
-        # convert response string to packet
-        # return RTPPacket.from_packet(recv_bstr)
+        # add packet into packet_buffer        
+
+    def _receive_frame(self):
+        remain = bytes()
+        self.packet_buffer = heapq.heapify([])
         
+        # recieve packet until full frame gets, and then synthesize
+        while True:
+            # video
+            packet, remain = self._receive_rtp_packet(remain, type)
+            # push payload to min heap by packet index
+            heapq.heappush(self.packet_buffer, (packet['ind'], packet['payload']))
+            # last packet recieved
+            if packet['ind'] == packet['total']:
+                # synthesize all into a full frame
+                frame = bytes()
+                # by the order of packet index
+                while self.packet_buffer:
+                    frame += heapq.heappop(self.packet_buffer)[1]
+                # todo: cv2 imdecode
+                time_stamp = packet['time_stamp']
+                return time_stamp, frame
 
     # receive rtp packet continuously
     # 2 rtp packet, 1 video, 1 audio
-    def _receive_video(self):
-        # video
-        self._rtp_socket_v = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._rtp_socket_v.bind((self.localhost, self.rtp_port_v))
-        self._rtp_socket_v.settimeout(self.RTP_TIMEOUT)
-        # audio
-        self._rtp_socket_a = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._rtp_socket_a.bind((self.localhost, self.rtp_port_a))
-        self._rtp_socket_a.settimeout(self.RTP_TIMEOUT)
-        # timeout
-        # self._rtp_socket.settimeout()
-
+    def _receive(self, type):
         # receive frame, add to frame buffer, a min heap
         # format: (time_stamp, frame)
-        remain = bytes()
+        # remain = bytes()
         while True:
             if not self.is_playing:
                 time.sleep(1)
 
-            # video
-            packet, remain = self._receive_rtp_packet(remain, type=1)
-            frame = Image.open(BytesIO(packet['payload']))
-            # heapq.heappush(self.frame_buffer_v, (packet['seq_num'], frame))
-            heapq.heappush(self.frame_buffer_v, (packet['time_stamp'], frame))
+            time_stamp, frame = self._receive_frame()
+            # packet, remain = self._receive_rtp_packet(remain, type=1)
+            frame = Image.open(frame)
+            if type == 1:
+                heapq.heappush(self.frame_buffer_v, (time_stamp, frame))
+            elif type == 2:
+                heapq.heappush(self.frame_buffer_a, (time_stamp, frame))
 
-            # audio
-            packet = self._receive_rtp_packet(type=2)
-            # heapq.heappush(self.frame_buffer_a, (packet['seq_num'], packet['payload']))
-            heapq.heappush(self.frame_buffer_a, (packet['time_stamp'], packet['payload']))
+    def _receive_video(self):
+        self._rtp_socket_v = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._rtp_socket_v.bind((self.localhost, self.rtp_port_v))
+        self._rtp_socket_v.settimeout(self.RTP_TIMEOUT)
+        self._receive(self, type=1)
 
-    # create a parallel thread for _receive_video 
-    def _start_receive_video_thread(self):
+    def _receive_audio(self):
+        self._rtp_socket_a = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._rtp_socket_a.bind((self.localhost, self.rtp_port_a))
+        self._rtp_socket_a.settimeout(self.RTP_TIMEOUT)
+        self._receive(self, type=2)
+
+    # create 2 threads, 1 video, 1 audio, for receiving frames
+    def _start_receive_thread(self):
         self.receive_video_thread = Thread(target = self._receive_video)
         self.receive_video_thread.setDaemon(True) # auto terminated with process
         self.receive_video_thread.start()
+
+        self.receive_audio_thread = Thread(target = self._receive_audio)
+        self.receive_audio_thread.setDaemon(True) # auto terminated with process
+        self.receive_audio_thread.start()
 
     # send RTSP request to server
     def _send_rtsp_request(self, command, type, start=0):
@@ -162,9 +180,9 @@ class Client:
             self.time_stamp = output[0]
             return output[1], self.time_stamp
         elif type == 2:
-            if not self._frame_buffer_a:
+            if not self.frame_buffer_a:
                 return None
-            while self._frame_buffer_a[0][0] < self.time_stamp_a:
+            while self.frame_buffer_a[0][0] < self.time_stamp_a:
                 heapq.heappop(self.frame_buffer_a)[1]
             output = heapq.heappop(self.frame_buffer_a)[1]
             self.time_stamp = output[0]
