@@ -52,7 +52,6 @@ class Client:
                 if _type == 1:
                     # print(size)
                     temp = self._rtp_socket_v.recv(size)
-                    print(temp, len(temp))
                 elif _type == 2:
                     temp = self._rtp_socket_a.recv(size)
                 index = temp.find(self.EOF)
@@ -180,7 +179,7 @@ class Client:
             # give the frame of desired time
             output = heapq.heappop(self.frame_buffer_v)[1]
             # print("client video frame", output[1])
-            return output[1]
+            return output
         elif type == 2:
             if not self.frame_buffer_a:
                 return None
@@ -189,7 +188,7 @@ class Client:
                 heapq.heappop(self.frame_buffer_a)[1]
             output = heapq.heappop(self.frame_buffer_a)[1]
             # print("client audio frame", output[1])
-            return output[1]
+            return output
     
     # <commands>
     # def send_command(self, command):

@@ -18,13 +18,14 @@ def rtp_header_generator(sequence_number:int, timestamp:int ,SSRC, CSRC, payload
   fourth_to_seventh_bytes = [
       (timestamp >> shift) & 0xFF for shift in (24, 16, 8, 0)
   ]
+  shifts = (24, 16, 8, 0)
   # b8~b11 -> ssrc
-  eigth_to_eleventh_bytes = [
-      (SSRC >> shift) & 0xFF for shift in (24, 16, 8, 0)
-  ]
-  twelve_to_sixteen_bytes = [
-      (CSRC >> shift) & 0xFF for shift in (24, 16, 8, 0)
-  ]
+  eigth_to_eleventh_bytes = []
+  for i in range(len(shifts)):
+      eigth_to_eleventh_bytes.append((SSRC%(256**i)) >> shifts[i] & 0xFF)
+  twelve_to_sixteen_bytes = []
+  for i in range(len(shifts)):
+      twelve_to_sixteen_bytes.append(((CSRC%(256**i)) >> shifts[i]) & 0xFF)
   header = bytes((
       zeroth_byte,
       first_byte,
