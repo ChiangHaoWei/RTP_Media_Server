@@ -9,7 +9,7 @@ from client.utils import rtsp_request_generator, rtp_response_parser, rtsp_respo
 
 class Client:
     localhost = '127.0.0.1'
-    FRAME_SIZE = 4096
+    FRAME_SIZE = 1024
     RTSP_TIMEOUT = 100/1000
     RTP_TIMEOUT = 5/1000
     EOF = b'\xff\xd9'
@@ -54,6 +54,7 @@ class Client:
             try:
                 if type == 1:
                     temp = self._rtp_socket_v.recv(size)
+                    print("temp", len(temp))
                 elif type == 2:
                     temp = self._rtp_socket_a.recv(size)
                 index = temp.find(self.EOF)

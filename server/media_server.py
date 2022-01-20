@@ -62,7 +62,7 @@ class MediaServer:
                   assert client_info.client_port % 2 == 0
                   client_info.server_port = self.available_port.pop()
               # RTP stream
-              if "streamid" in header["param"] and header["param"]["streamid"][0] == "0":
+              if "streamid" in header["param"] and header["param"]["streamid"][0] == "1":
                 client_info.stream = AudioStream(header["path"])
               else:
                 client_info.stream = VideoStream(header["path"])
@@ -155,6 +155,8 @@ class MediaServer:
       except:
         response = bad_response()
       # send response to client
+      print("Response")
+      print(response.decode("utf-8"))
       client.send(response)
     print(f"Client {addr} disconnect")
     client.close()  
@@ -183,8 +185,9 @@ class MediaServer:
           for t in self.buffer:
             t.join()
         self.buffer.append(threading.Thread(target=self.handle_on_client, args=(client, addr)))
-        self.buffer[-1].start()
         self.buffer[-1].setDaemon(True)
+        self.buffer[-1].start()
+        
       self.check_timeout()
 
 if __name__ == "__main__":

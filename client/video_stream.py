@@ -30,11 +30,11 @@ class VideoStream:
     ret, frame = self.cap.read()
     if not ret:
         print("frame read failed")
-    # print(f"size of video frame: {len(bytes(frame))}")
-    # ret,  jpg_frame = cv2.imencode('.jpg', frame)
-    # if not ret:
-    #     print("frame read failed")
-    return bytes(frame)+self.EOF
+    print(f"size of video frame: {len(bytes(frame))}")
+    ret,  jpg_frame = cv2.imencode('.jpg', frame)
+    if not ret:
+        print("frame read failed")
+    return bytes(jpg_frame)
 
   def close(self):
     self.cap.release()

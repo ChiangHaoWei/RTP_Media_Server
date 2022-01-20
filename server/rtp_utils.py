@@ -1,4 +1,4 @@
-def rtp_packet_generator(sequence_number:int, timestamp:int, payload:bytes, payload_type=26):
+def rtp_header_generator(sequence_number:int, timestamp:int ,SSRC, CSRC, payload_type=26):
   # default header info
   HEADER_SIZE = 12   # bytes
   VERSION = 0b10     # 2 bits -> current version 2
@@ -6,7 +6,6 @@ def rtp_packet_generator(sequence_number:int, timestamp:int, payload:bytes, payl
   EXTENSION = 0b0    # 1 bit
   CC = 0x0           # 4 bits
   MARKER = 0b0       # 1 bit
-  SSRC = 0x00000000  # 32 bits
   # b0 -> v0 v1 p x c0 c1 c2 c3
   zeroth_byte = (VERSION << 6) | (PADDING << 5) | (EXTENSION << 4) | CC
   # b1 -> m pt0 pt1 pt2 pt3 pt4 pt5 pt6
@@ -23,6 +22,9 @@ def rtp_packet_generator(sequence_number:int, timestamp:int, payload:bytes, payl
   eigth_to_eleventh_bytes = [
       (SSRC >> shift) & 0xFF for shift in (24, 16, 8, 0)
   ]
+  twelve_to_sixteen_bytes = [
+      (CSRC >> shift) & 0xFF for shift in (24, 16, 8, 0)
+  ]
   header = bytes((
       zeroth_byte,
       first_byte,
@@ -30,5 +32,15 @@ def rtp_packet_generator(sequence_number:int, timestamp:int, payload:bytes, payl
       third_byte,
       *fourth_to_seventh_bytes,
       *eigth_to_eleventh_bytes,
+      *twelve_to_sixteen_bytes,
   ))
-  return header+payload
+  print_header(header)
+  return header
+
+
+def print_header(header:bytes):
+        # print header without SSRC
+        for i, by in enumerate(header[:16]):
+            s = ' '.join(f"{by:08b}")
+            # break line after the third and seventh bytes
+            print(s, end=' ' if i not in (3, 7, 11, 15) else '\n')

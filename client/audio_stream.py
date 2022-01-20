@@ -18,7 +18,7 @@ class AudioStream:
     self.wave_file.setpos(timestamp)
     frame = self.wave_file.readframes(1)
     print("audio frame size", len(frame))
-    return frame + self.EOF
+    return frame
 
   def close(self):
     self.wave_file.close()
