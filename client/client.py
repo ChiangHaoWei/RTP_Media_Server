@@ -291,7 +291,9 @@ class Client:
         if not res or res['code'] != '200':
             return
 
-        self._rtsp_connection.close()
+        self._rtsp_socket.close()
+        self._rtp_socket_v.close()
+        self._rtp_socket_a.close()
         self.is_playing = False
         self.is_rtsp_connected = False
     # </commands>
