@@ -76,19 +76,35 @@ class Client:
     def _receive_frame(self, _type):
         remain = bytes()
         self.packet_buffer = []
-        
+        prev_ind = -1
         # recieve packet until full frame gets, and then synthesize
+        out_of_order = False
         while True:
             packet, remain = self._receive_rtp_packet(remain, _type)
             # print(f"packet\n{packet['payload']}\n")
             # print([i for i in packet['payload']])
             # push payload to min heap by packet index
-            print("payload size", len(packet['payload']))
+            # print("payload size", len(packet['payload']))
+            # get packets again if new frame
+            print("received: ", packet['ind'], packet['total'])
+            if out_of_order and packet['ind'] == 0:
+                out_of_order = False
+            if packet['ind'] != prev_ind + 1:
+                out_of_order = True
+            # omit out of order packets
+            if out_of_order:
+                print("out of order (っ °Д °;)っ")
+                self.packet_buffer = []
+                prev_ind = -1
+                continue
+            prev_ind = packet['ind']
             heapq.heappush(self.packet_buffer, (packet['ind'], packet['payload']))
             # last packet recieved
-            print(packet['ind'], packet['total'])
+            print("added: ", packet['ind'], packet['total'])
             if packet['ind'] == packet['total']-1:
                 print("receives a full frame !!!!")
+                prev_ind = -1
+                out_of_order = False
                 # synthesize all into a full frame
                 frame_raw = bytes()
                 # by the order of packet index
