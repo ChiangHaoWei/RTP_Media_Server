@@ -43,8 +43,8 @@ def sdp_generator(path:str):
         f"a=FPS:integer;{video_fps}\r\n" \
         "m=audio 0 RTP/AVP 97\r\n" \
         "a=control:streamid=1\r\n" \
-        f"a=range:npt={start_time}-{end_time}\r\n" \
-        f"a=length:npt={end_time-start_time}\r\n" \
+        f"a=range:npt={start_time}-{audio_dict['n_frame']}\r\n" \
+        f"a=length:npt={audio_dict['n_frame']-start_time}\r\n" \
         "a=rtpmap:97 mpeg4-generic/32000/2\r\n" \
         f"a=FPS:integer;{audio_dict['fps']}\r\n" \
         f"a=Samplewidth:integer;{audio_dict['samplewidth']}\r\n" \

@@ -9,7 +9,8 @@ def get_info(path:str) -> Tuple[int, int, int, dict]:
 
     audio_info = {"samplewidth": int(wave_file.getsampwidth()), 
     "channels": int(wave_file.getnchannels()),
-    "fps": int(wave_file.getframerate())
+    "fps": int(wave_file.getframerate()),
+    "n_frame": int(wave_file.getnframe())
     }
     print("video fps", video_fps)
     frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
