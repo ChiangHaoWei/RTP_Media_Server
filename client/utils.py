@@ -1,7 +1,7 @@
 def rtsp_request_generator(host_addr, req_dict, setup_type=None):
     version = "RTSP/1.0"
     if setup_type:
-        req_dict['file_path'] += f"?streamid={setup_type}"
+        req_dict['file_path'] += f"?streamid={setup_type-1}"
     req_str = f"{req_dict['command']} rtsp://{host_addr}/{req_dict['file_path']} {version}\r\n"
 
     for key in req_dict:

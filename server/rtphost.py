@@ -4,12 +4,13 @@ import socket
 
 from client.audio_stream import AudioStream
 from client.video_stream import VideoStream
-from server.rtp_utils import rtp_packet_generator
+from server.rtp_utils import rtp_header_generator
 
 from typing import Union
 
 class RTPHost:
   SERVER = "127.0.0.1"
+  EOF = b'\xff\xd9'
   def __init__(self, addr:str, port:int, session:str) -> None:
     self.addr = addr
     self.port = port
@@ -35,18 +36,23 @@ class RTPHost:
     assert self.end_place >= self.play_place
     while self.playing and (self.play_place < self.end_place):
       print(f"Send packet #{self.seq_num} with timestamp={self.play_place}")
-      payload = self.stream.get_payload(self.play_place)
-      packet = rtp_packet_generator(self.seq_num, self.play_place, payload)
       self.play_place += 1
-      if self.seq_num >= 2**16:
-        self.seq_num = 0
-      else:
-        self.seq_num += 1
-      assert packet.find(b'\xff\xd9') != -1, "not end with EOF"
-      print(f"Packet Size: {len(packet)}")
-      s.sendto(packet, (self.addr, self.client_port))
+      payload = self.stream.get_payload(self.play_place)
+      CSRC = (len(payload) // 2**15)+1
+      assert CSRC*2**15 >= len(payload) and (CSRC-1)*2**15 < len(payload)
+      for i in range(CSRC):
+        header = rtp_header_generator(self.seq_num, self.play_place, i, CSRC)
+        packet = header + payload[i*2**15:(i+1)*2**15]+self.EOF
+        if self.seq_num >= 2**16:
+          self.seq_num = 0
+        else:
+          self.seq_num += 1
+        assert packet.endswith(self.EOF) != -1, "not end with EOF"
+        print(f"Packet Size: {len(packet)}")
+        s.sendto(packet, (self.addr, self.client_port))
     self.playing = False
     s.close()
+
   def play(self):
     if not self.playing:
       self.playing = True
@@ -61,5 +67,6 @@ class RTPHost:
     if self.playing:
       self.playing = False
       self.job.join()
+      self.stream.close()
   def updata_time(self):
     self.time = time.time()
