@@ -10,8 +10,8 @@ from typing import Union
 
 class RTPHost:
   SERVER = "127.0.0.1"
-  EOF = b'\xff\xd9'
-  MAX_PACKET_SIZE = 2**10
+  EOF = b'\xff\xff\xd0\xff\xd0\xff'
+  MAX_PACKET_SIZE = 2**11
   def __init__(self, addr:str, port:int, session:str) -> None:
     self.addr = addr
     self.port = port
@@ -41,15 +41,19 @@ class RTPHost:
       payload = self.stream.get_payload(self.play_place)
       CSRC = (len(payload) // self.MAX_PACKET_SIZE)+1
       assert CSRC*self.MAX_PACKET_SIZE >= len(payload) and (CSRC-1)*self.MAX_PACKET_SIZE < len(payload)
+      assert payload.find(self.EOF) == -1, "payload has already contain EOF"
+      assert payload.startswith(b'\xff\xd8') and payload.endswith(b'\xff\xd9'), "Not a JPEG"
       for i in range(CSRC):
         header = rtp_header_generator(self.seq_num, self.play_place, i, CSRC)
-        packet = header + payload[i*self.MAX_PACKET_SIZE:(i+1)*self.MAX_PACKET_SIZE]+self.EOF
+        sub_payload = payload[i*self.MAX_PACKET_SIZE:(i+1)*self.MAX_PACKET_SIZE]
+        print(f"payload size: {len(sub_payload)}")
+        packet = header + sub_payload +self.EOF
         if self.seq_num >= 2**16:
           self.seq_num = 0
         else:
           self.seq_num += 1
         assert packet.endswith(self.EOF) != -1, "not end with EOF"
-        print(f"Packet Size: {len(packet)}")
+        # print(f"Packet Size: {len(packet)}")
         s.sendto(packet, (self.addr, self.client_port))
     self.playing = False
     s.close()

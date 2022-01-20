@@ -22,10 +22,10 @@ def rtp_header_generator(sequence_number:int, timestamp:int ,SSRC, CSRC, payload
   # b8~b11 -> ssrc
   eigth_to_eleventh_bytes = []
   for i in range(len(shifts)):
-      eigth_to_eleventh_bytes.append((SSRC%(256**i)) >> shifts[i] & 0xFF)
+      eigth_to_eleventh_bytes.append((SSRC%(256**(4-i))) >> shifts[i] & 0xFF)
   twelve_to_sixteen_bytes = []
   for i in range(len(shifts)):
-      twelve_to_sixteen_bytes.append(((CSRC%(256**i)) >> shifts[i]) & 0xFF)
+      twelve_to_sixteen_bytes.append(((CSRC%(256**(4-i))) >> shifts[i]) & 0xFF)
   header = bytes((
       zeroth_byte,
       first_byte,
@@ -35,7 +35,7 @@ def rtp_header_generator(sequence_number:int, timestamp:int ,SSRC, CSRC, payload
       *eigth_to_eleventh_bytes,
       *twelve_to_sixteen_bytes,
   ))
-  print_header(header)
+#   print_header(header)
   return header
 
 

@@ -18,7 +18,6 @@ def get_info(path:str) -> Tuple[int, int, int, dict]:
 
 
 class VideoStream:
-  EOF = b'\xff\xd9'
 
   def __init__(self, path:str) -> None:
     self.path = path
@@ -31,11 +30,12 @@ class VideoStream:
     ret, frame = self.cap.read()
     if not ret:
         print("frame read failed")
-    print(f"size of video frame: {len(bytes(frame))}")
+    
     ret,  jpg_frame = cv2.imencode('.jpg', frame)
     if not ret:
         print("frame read failed")
-    return bytes(jpg_frame)
+    print(f"size of video frame: {len(bytes(jpg_frame.tobytes()))}")
+    return jpg_frame.tobytes()
 
   def close(self):
     self.cap.release()

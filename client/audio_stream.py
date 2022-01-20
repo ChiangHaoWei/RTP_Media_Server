@@ -2,7 +2,6 @@ import wave
 import pyaudio
 
 class AudioStream:
-  EOF = b'\xff\xd9'
 
   def __init__(self, path:str) -> None:
     self.path = path

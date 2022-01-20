@@ -16,7 +16,7 @@ class Client:
     FRAME_SIZE = 4096
     RTSP_TIMEOUT = 100/1000
     RTP_TIMEOUT = 5/1000
-    EOF = b'\xff\xd9'
+    EOF = b'\xff\xff\xd0\xff\xd0\xff'
     def __init__(self, file_path, host_addr, host_port, rtp_port_v, rtp_port_a):
         self.is_rtsp_connected = False
         self.is_playing = False
@@ -60,15 +60,16 @@ class Client:
                     # print(temp, len(temp))
                 elif _type == 2:
                     temp = self._rtp_socket_a.recv(size)
-                index = temp.find(self.EOF)
+                recv_bstr += temp
+                index = recv_bstr.find(self.EOF)
                 # print(temp)
                 if index != -1:
                     # full packet received
                     if _type == 2:
                         print("receives a full rtp packet")
-                    recv_bstr += temp[:index]
-                    return rtp_response_parser(recv_bstr), temp[index+len(self.EOF):]
-                recv_bstr += temp
+                    recv_bstr, remain = recv_bstr[:index], recv_bstr[index+len(self.EOF):]
+                    return rtp_response_parser(recv_bstr), remain
+                
             except socket.timeout:
                 continue
 
@@ -79,27 +80,29 @@ class Client:
         # recieve packet until full frame gets, and then synthesize
         while True:
             packet, remain = self._receive_rtp_packet(remain, _type)
-            print(f"packet\n{packet['payload']}\n")
+            # print(f"packet\n{packet['payload']}\n")
             # print([i for i in packet['payload']])
             # push payload to min heap by packet index
             print("payload size", len(packet['payload']))
             heapq.heappush(self.packet_buffer, (packet['ind'], packet['payload']))
             # last packet recieved
-            # print(packet['ind'], packet['total'])
+            print(packet['ind'], packet['total'])
             if packet['ind'] == packet['total']-1:
-                print("receives a full frame 🤗🤗🤗")
+                print("receives a full frame !!!!")
                 # synthesize all into a full frame
                 frame_raw = bytes()
                 # by the order of packet index
                 while self.packet_buffer:
                     frame_raw += heapq.heappop(self.packet_buffer)[1] # payload
-                print("frame size", len(frame_raw))
+                
+                assert frame_raw.startswith(b'\xff\xd8') and frame_raw.endswith(b'\xff\xd9'), "Not a JPEG"
                 # for video, uncompress and add to buffer
                 if(_type == 1):
                     # bytes to np
                     frame_np = np.frombuffer(frame_raw, dtype=np.uint8)
                     # cv2 uncompress
                     frame_raw_np = cv2.imdecode(frame_np, cv2.IMREAD_COLOR)
+                    print("frame size", len(frame_raw))
                     # np to bytes
                     frame = Image.fromarray(frame_raw_np)
                     # frame = Image.frombytes(frame_raw)
