@@ -11,6 +11,7 @@ from typing import Union
 class RTPHost:
   SERVER = "127.0.0.1"
   EOF = b'\xff\xd9'
+  MAX_PACKET_SIZE = 2**10
   def __init__(self, addr:str, port:int, session:str) -> None:
     self.addr = addr
     self.port = port
@@ -38,11 +39,11 @@ class RTPHost:
       print(f"Send packet #{self.seq_num} with timestamp={self.play_place}")
       self.play_place += 1
       payload = self.stream.get_payload(self.play_place)
-      CSRC = (len(payload) // 2**15)+1
-      assert CSRC*2**15 >= len(payload) and (CSRC-1)*2**15 < len(payload)
+      CSRC = (len(payload) // self.MAX_PACKET_SIZE)+1
+      assert CSRC*self.MAX_PACKET_SIZE >= len(payload) and (CSRC-1)*self.MAX_PACKET_SIZE < len(payload)
       for i in range(CSRC):
         header = rtp_header_generator(self.seq_num, self.play_place, i, CSRC)
-        packet = header + payload[i*2**15:(i+1)*2**15]+self.EOF
+        packet = header + payload[i*self.MAX_PACKET_SIZE:(i+1)*self.MAX_PACKET_SIZE]+self.EOF
         if self.seq_num >= 2**16:
           self.seq_num = 0
         else:
