@@ -340,9 +340,10 @@ class Client:
             return
         
         # video meta
-        # print(res)
         self.fps_v = round(float(res['FPS_v']))
         self.length_v = int(float(res['length_v']))
+        self.height_v = int(res['height_v'])
+        self.width_v = int(res['width_v'])
 
         # audio meta
         self.length_a = int(float(res['length_a']))
