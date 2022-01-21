@@ -10,7 +10,7 @@ from server.rtsp_utils import rtsp_header_parser, rtsp_response_generator, bad_r
 from typing import Any, Dict, List, Tuple
 
 class MediaServer:
-  TIME_OUT = 30
+  TIME_OUT = 300
   def __init__(self, address:str, port:int) -> None:
     self.addr = address
     self.port = port
