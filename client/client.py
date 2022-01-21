@@ -239,8 +239,8 @@ class Client:
             if not self.frame_buffer_v:
                 return None
             # press play button -> don't give in until 30 frames in buffer
-            if self.is_start and len(self.frame_buffer_v) < 30:
-                return
+            # if self.is_start and len(self.frame_buffer_v) < 30:
+            #     return
             self.is_start = False
             # omit until time reached
             while self.frame_buffer_v[0][0] < self.time_stamp_v:
@@ -254,6 +254,8 @@ class Client:
             # pass
             if not self.frame_buffer_a:
                 return None
+            if self.is_start and len(self.frame_buffer_v) < 30:
+                return
             # if self.is_start:
             #     return
             while self.frame_buffer_a[0][0] < self.time_stamp_a:
