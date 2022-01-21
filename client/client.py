@@ -19,7 +19,7 @@ class Client:
     EOF = b'\xff\xff\xd0\xff\xd0\xff'
     JPEG_START = b'\xff\xd8'
     JPEG_END = b'\xff\xd9'
-    def __init__(self, file_path, host_addr, host_port, rtp_port_v, rtp_port_a):
+    def __init__(self, file_path, host_addr, host_port, rtp_port_v, rtp_port_a, localhost='127.0.0.1'):
         self.is_rtsp_connected = False
         self.is_playing = False
         self.file_path = file_path
@@ -124,26 +124,26 @@ class Client:
                     while packet_buffer:
                         frame_raw += heapq.heappop(packet_buffer)[1] # payload
                 prev_frame_raw = frame_raw
-                
-                assert frame_raw.startswith(self.JPEG_START) and frame_raw.endswith(self.JPEG_END), "Not a JPEG"
+                time_stamp = packet['time_stamp']
+                # assert frame_raw.startswith(self.JPEG_START) and frame_raw.endswith(self.JPEG_END), "Not a JPEG"
                 prev_ind = -1
                 out_of_order = False
                 # for video, uncompress and add to buffer
-                if(_type == 1):
+                if (_type == 1):
                     # bytes to np
                     frame_np = np.frombuffer(frame_raw, dtype=np.uint8)
                     # cv2 uncompress
                     # frame_raw_np = cv2.imdecode(frame_np, cv2.IMREAD_COLOR)
-                    print("frame size", len(frame_raw))
+                    # print("frame size", len(frame_raw))
                     # np to bytes
                     # frame = Image.fromarray(frame_raw_np)
                     # frame = Image.frombytes(frame_raw)
-                    time_stamp = packet['time_stamp']
                     return time_stamp, frame_np
                 # for audio, play it out
-                elif(_type == 2):
+                elif (_type == 2):
                     # print(f'playing ... {len(frame_raw)}\n')
                     self.stream_player.write(frame_raw)
+                    time_stamp = packet['time_stamp']
                     return time_stamp, frame_raw
                     
 
@@ -169,8 +169,8 @@ class Client:
                 heapq.heappush(self.frame_buffer_v, (time_stamp, frame))
             elif _type == 2:
                 # audio will be played out directly
-                continue
-                # heapq.heappush(self.frame_buffer_a, (time_stamp, frame))
+                heapq.heappush(self.frame_buffer_a, (time_stamp, frame))
+                # continue
 
     def _receive_video(self):
         self._receive(_type=1)
@@ -251,15 +251,16 @@ class Client:
             return output
         elif type == 2:
             # audio will be played out directly
-            pass
-            # if not self.frame_buffer_a:
-            #     return None
-            # print("buffer", self.frame_buffer_a)
-            # while self.frame_buffer_a[0][0] < self.time_stamp_a:
-            #     heapq.heappop(self.frame_buffer_a)[1]
-            # output = heapq.heappop(self.frame_buffer_a)[1]
-            # # print("client audio frame", output[1])
-            # return output[1]
+            # pass
+            if not self.frame_buffer_a:
+                return None
+            # if self.is_start:
+            #     return
+            while self.frame_buffer_a[0][0] < self.time_stamp_a:
+                heapq.heappop(self.frame_buffer_a)[1]
+            output = heapq.heappop(self.frame_buffer_a)[1]
+            # print("client audio frame", output[1])
+            return output
     
     # <commands>
     # def send_command(self, command):
