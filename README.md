@@ -15,6 +15,6 @@ python test_server.py -a <server ip>
 
 run client (in another terminal)
 ```
-python main_client.py -a <server ip> -n <file>
-# e.g. python main_client.py -a 127.0.0.1 -n movie5.mp4
+python main_client.py -a <server ip> -l <client ip> -n <file>
+# e.g. python main_client.py -a 127.0.0.1 -l 192.168.137.111 -n movie5.mp4
 ```
