@@ -212,7 +212,7 @@ class ClientWindow(QMainWindow):
     def run_loading(self):
         # self._run_loading_timer.start(1000//self._media_client.fps_v)
         
-        if len(self._media_client.frame_buffer_v) > 120 or len(self._media_client.frame_buffer_a) > 120:
+        if len(self._media_client.frame_buffer_v) > 120 and len(self._media_client.frame_buffer_a) > 120:
             if not self.audio_job.is_alive() and self.state=='init':
                 self.audio_job.start()
             else:
