@@ -1,4 +1,5 @@
 
+import threading
 from PyQt5.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton
 #import QSlider, Style, Qt
@@ -12,6 +13,7 @@ from PyQt5.QtCore import pyqtSignal, QTimer
 from PIL.ImageQt import ImageQt
 from PIL import Image
 import cv2
+import time
 
 from client.client import Client
 #from utils.video_stream import VideoStream
@@ -30,6 +32,7 @@ class ClientWindow(QMainWindow):
             host_port: int,
             rtp_port_v: int,
             rtp_port_a: int,
+            localhost:str,
             parent=None):
         super(ClientWindow, self).__init__(parent)
         self.nframe = 0
@@ -48,7 +51,7 @@ class ClientWindow(QMainWindow):
         self.tear_button = QPushButton()
         self.error_label = QLabel()
 
-        self._media_client = Client(file_name, host_address, host_port, rtp_port_v, rtp_port_a)
+        self._media_client = Client(file_name, host_address, host_port, rtp_port_v, rtp_port_a, localhost)
         self._update_image_signal.connect(self.update_image)
         self._update_image_timer = QTimer()
         self._update_image_timer.timeout.connect(self._update_image_signal.emit)
@@ -65,7 +68,8 @@ class ClientWindow(QMainWindow):
         #self.mediaPlayer.durationChanged.connect(self.durationChanged)
         self.mediaPlayer.error.connect(self.handle_error)
 
-        self.stream = None
+        self.audio_job = threading.Thread(target=self.update_audio)
+        self.is_stop = False
 
         self.init_ui()
 
@@ -122,7 +126,7 @@ class ClientWindow(QMainWindow):
             print("received frame!")
             print(self._media_client.stream_player.is_active())
             decode_frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
-            image = Image.fromarray(decode_frame)
+            image = Image.fromarray(cv2.cvtColor(decode_frame,cv2.COLOR_BGR2RGB))
             # cv2.imshow("frame", decode_frame
             pix = QPixmap.fromImage(ImageQt(image).copy())
             self.video_player.setPixmap(pix)
@@ -131,10 +135,12 @@ class ClientWindow(QMainWindow):
     def update_audio(self):
         if not self._media_client.is_playing:
             return
-        
-        if self._media_client.time_stamp_a / (self._media_client.fps_a/1) > self._media_client.time_stamp_v / self._media_client.fps_v + 0.01:
-            return
-
+        while not self.is_stop:
+            if len(self._media_client.frame_buffer_a) > 0 and self._media_client.is_playing:
+                frame = self._media_client.get_next_frame(type=2)
+                if frame is not None:
+                    self._media_client.stream_player.write(frame)
+            time.sleep(0.001)
         # frame = self._media_client.get_next_frame(type = 2)
         # if frame is not None:
         #     print("audio frame", frame)
@@ -153,6 +159,7 @@ class ClientWindow(QMainWindow):
         self.setup_button.setEnabled(False)
         self.play_button.setEnabled(True)
         self.tear_button.setEnabled(True)
+        self.audio_job.start()
 
     def handle_play(self):
         if self.state == 'pause':
@@ -174,6 +181,7 @@ class ClientWindow(QMainWindow):
         self._media_client.send_teardown_command()
         self.setup_button.setEnabled(True)
         self.play_button.setEnabled(False)
+        self.is_stop = True
         # if self.stream.is_active():
         #     self.stream.stop_stream()
         # self.pause_button.setEnabled(False)
