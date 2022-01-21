@@ -14,8 +14,8 @@ class AudioStream:
     self.fps = wave_file.getframerate()
 
   def get_payload(self, timestamp:int) -> bytes:
-    self.wave_file.setpos(timestamp)
-    frame = self.wave_file.readframes(1024)
+    # self.wave_file.setpos(timestamp)
+    frame = self.wave_file.readframes(2**10)
     print("audio frame size", len(frame))
     return frame
 

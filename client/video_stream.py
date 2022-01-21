@@ -26,7 +26,7 @@ class VideoStream:
     self.frame_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
 
   def get_payload(self, timestamp:int) -> bytes:
-    self.cap.set(cv2.CAP_PROP_POS_FRAMES, timestamp)
+    # self.cap.set(cv2.CAP_PROP_POS_FRAMES, timestamp)
     ret, frame = self.cap.read()
     if not ret:
         print("frame read failed")

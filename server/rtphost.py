@@ -16,6 +16,7 @@ class RTPHost:
     self.port = port
     self.server_addr = server_addr
     self.type = "UDP"
+    self.content:str=None
     self.session = session
     self.path:str = None
     self.client_port:int = None
@@ -37,14 +38,15 @@ class RTPHost:
     print(f"Send RTP packet to client at ({self.client_addr}, {self.client_port})")
     assert self.end_place >= self.play_place
     while self.playing and (self.play_place < self.end_place):
-      time.sleep(0.001)
       print(f"Send packet #{self.seq_num} with timestamp={self.play_place}")
+      if self.content=="audio":
+        time.sleep(0.01)
       self.play_place += 1
       payload = self.stream.get_payload(self.play_place)
       CSRC = (len(payload) // self.MAX_PACKET_SIZE)+1
-      assert CSRC*self.MAX_PACKET_SIZE >= len(payload) and (CSRC-1)*self.MAX_PACKET_SIZE < len(payload)
+      # assert CSRC*self.MAX_PACKET_SIZE >= len(payload) and (CSRC-1)*self.MAX_PACKET_SIZE < len(payload)
       assert payload.find(self.EOF) == -1, "payload has already contain EOF"
-      assert payload.startswith(b'\xff\xd8') and payload.endswith(b'\xff\xd9'), "Not a JPEG"
+      assert self.content=="audio" or payload.startswith(b'\xff\xd8') and payload.endswith(b'\xff\xd9'), "Not a JPEG"
       for i in range(CSRC):
         header = rtp_header_generator(self.seq_num, self.play_place, i, CSRC)
         sub_payload = payload[i*self.MAX_PACKET_SIZE:(i+1)*self.MAX_PACKET_SIZE]

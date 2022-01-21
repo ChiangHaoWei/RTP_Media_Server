@@ -67,8 +67,10 @@ class MediaServer:
               # RTP stream
               if "streamid" in header["param"] and header["param"]["streamid"][0] == "1":
                 client_info.stream = AudioStream(header["path"])
+                client_info.content = "audio"
               else:
                 client_info.stream = VideoStream(header["path"])
+                client_info.content = "video"
               # store client information
               self.clients[session] = client_info
               # response
@@ -167,7 +169,7 @@ class MediaServer:
     timeouts = list()
     for key, host in self.clients.items():
       if time.time()-host.time > self.TIME_OUT:
-        print(f"Client ({host.addr}, {host.port}, {type(host.stream)}) with session id {host.session} timeout")
+        print(f"Client ({host.client_addr}, {host.port}, {type(host.stream)}) with session id {host.session} timeout")
         timeouts.append(key)
     for key in timeouts:
       self.clients[key].stop()

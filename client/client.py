@@ -12,15 +12,16 @@ import cv2
 import pyaudio
 
 class Client:
-    localhost = '127.0.0.1'
+    
     FRAME_SIZE = 2**16
     RTSP_TIMEOUT = 100/1000
     RTP_TIMEOUT = 5/1000
     EOF = b'\xff\xff\xd0\xff\xd0\xff'
-    def __init__(self, file_path, host_addr, host_port, rtp_port_v, rtp_port_a):
+    def __init__(self, file_path, host_addr, host_port, rtp_port_v, rtp_port_a, localhost='127.0.0.1'):
         self.is_rtsp_connected = False
         self.is_playing = False
         self.file_path = file_path
+        self.localhost = localhost
         self.host_addr = host_addr
         self.host_port = host_port
         self.rtp_port_v = rtp_port_v
@@ -123,8 +124,9 @@ class Client:
                 # for audio, play it out
                 elif (_type == 2):
                     # print(f'playing ... {len(frame_raw)}\n')
-                    return time_stamp, frame_raw
                     self.stream_player.write(frame_raw)
+                    return time_stamp, frame_raw
+                    
 
     # receive rtp packet continuously
     # 2 rtp packet, 1 video, 1 audio
@@ -148,8 +150,8 @@ class Client:
                 heapq.heappush(self.frame_buffer_v, (time_stamp, frame))
             elif _type == 2:
                 # audio will be played out directly
-                # continue
-                heapq.heappush(self.frame_buffer_a, (time_stamp, frame))
+                continue
+                # heapq.heappush(self.frame_buffer_a, (time_stamp, frame))
 
     def _receive_video(self):
         self._receive(_type=1)
@@ -289,7 +291,7 @@ class Client:
 
     def send_describe_command(self):
         res = self._send_rtsp_request("DESCRIBE", type=1)
-        
+        print(res)
         if not res or res['code'] != '200':
             # print(res)
             return

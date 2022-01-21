@@ -174,8 +174,8 @@ class ClientWindow(QMainWindow):
         self._media_client.send_teardown_command()
         self.setup_button.setEnabled(True)
         self.play_button.setEnabled(False)
-        if self.stream.is_active():
-            self.stream.stop_stream()
+        # if self.stream.is_active():
+        #     self.stream.stop_stream()
         # self.pause_button.setEnabled(False)
         exit(0)
 
