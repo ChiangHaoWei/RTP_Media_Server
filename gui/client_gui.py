@@ -183,8 +183,6 @@ class ClientWindow(QMainWindow):
         print("Finish")
         if not self.audio_job.is_alive() and self.state=='init':
             self.audio_job.start()
-        else:
-            self._media_client.stream_player.start_stream()
         
     def handle_play(self):
         if self.state == "init":
@@ -196,8 +194,9 @@ class ClientWindow(QMainWindow):
             self.last_start_time = time.time()
             self.state = 'play'
         elif self.state == 'pause':
-            self._media_client.send_play_command()
             self.handle_blocking()
+            self._media_client.stream_player.start_stream()
+            self._media_client.send_play_command()
             self.play_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
             self.play_button.setEnabled(True)
             self._update_image_timer.start(1000//self._media_client.fps_v)
