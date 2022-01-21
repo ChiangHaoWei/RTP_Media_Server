@@ -163,7 +163,7 @@ class ClientWindow(QMainWindow):
         #frame , timestamp= self._media_client.get_next_frame()
         #self.positionSlider.setValue(timestamp)
         if frame is not None:
-            print("received frame!")
+            # print("received frame!")
             decode_frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
             image = Image.fromarray(cv2.cvtColor(decode_frame,cv2.COLOR_BGR2RGB))
             pix = QPixmap.fromImage(ImageQt(image).copy())
@@ -185,7 +185,7 @@ class ClientWindow(QMainWindow):
                     self._media_client.stream_player.write(frame)
                     self._media_client.time_stamp_a += 1
             time.sleep(0.0001)
-        print("job end")
+        # print("job end")
         # frame = self._media_client.get_next_frame(type = 2)
         # if frame is not None:
         #     print("audio frame", frame)
@@ -226,7 +226,8 @@ class ClientWindow(QMainWindow):
             self.state = 'play'
             return
         else:
-            print("loading....❤❤❤❤🤣")
+            pass
+            # print("loading....❤❤❤❤🤣")
         frame = self.loading_list[self.current_loading]
         pix = QPixmap.fromImage(ImageQt(frame).copy())
         self.video_player.setPixmap(pix)
@@ -299,8 +300,8 @@ class ClientWindow(QMainWindow):
     def sliderpress(self):
         if self.state == 'play':
             self.handle_play()
-        position = self.positionSlider.value()
-        print(position)
+        # position = self.positionSlider.value()
+        # print(position)
     def sliderrelease(self):
         if abs(self._media_client.time_stamp_v - self.positionSlider.value()) > 20:
             self._media_client.stream_player.stop_stream()
@@ -314,7 +315,7 @@ class ClientWindow(QMainWindow):
             self._run_loading_timer.start()
             position = self.positionSlider.value()
             if position<=2:
-                print("😍😍😊😊⭐")
+                # print("😍😍😊😊⭐")
                 self.positionSlider.setValue(1)
                 position = 3
             self.play_time = position/self._media_client.fps_v
@@ -327,7 +328,7 @@ class ClientWindow(QMainWindow):
         else:
             self.handle_play()
         position = self.positionSlider.value()
-        print(position)
+        # print(position)
 
 
     def setPosition(self, position):

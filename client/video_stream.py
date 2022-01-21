@@ -42,7 +42,7 @@ class VideoStream:
     ret,  jpg_frame = cv2.imencode('.jpg', frame)
     if not ret:
         print("frame read failed")
-    print(f"size of video frame: {len(bytes(jpg_frame.tobytes()))}")
+    # print(f"size of video frame: {len(bytes(jpg_frame.tobytes()))}")
     return jpg_frame.tobytes()
 
   def close(self):

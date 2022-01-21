@@ -38,7 +38,7 @@ class RTPHost:
     print(f"Send RTP packet to client at ({self.client_addr}, {self.client_port})")
     assert self.end_place >= self.play_place
     while self.playing and (self.play_place < self.end_place):
-      print(f"Send packet #{self.seq_num} with timestamp={self.play_place}")
+      # print(f"Send packet #{self.seq_num} with timestamp={self.play_place}")
       # if self.content=="audio":
       #   time.sleep(0.001)
       self.play_place += 1
@@ -50,7 +50,7 @@ class RTPHost:
       for i in range(CSRC):
         header = rtp_header_generator(self.seq_num, self.play_place, i, CSRC)
         sub_payload = payload[i*self.MAX_PACKET_SIZE:(i+1)*self.MAX_PACKET_SIZE]
-        print(f"payload size: {len(sub_payload)}")
+        # print(f"payload size: {len(sub_payload)}")
         packet = header + sub_payload +self.EOF
         if self.seq_num >= 2**15:
           self.seq_num = 0

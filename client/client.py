@@ -69,7 +69,8 @@ class Client:
                 if index != -1:
                     # full packet received
                     if _type == 2:
-                        print("received a full rtp packet")
+                        pass
+                        # print("received a full rtp packet")
                     recv_bstr, remain = recv_bstr[:index], recv_bstr[index+len(self.EOF):]
                     return rtp_response_parser(recv_bstr), remain
                 
@@ -91,9 +92,9 @@ class Client:
             # push payload to min heap by packet index
             # print("payload size", len(packet['payload']))
             # get packets again if new frame
-            print("received: ", packet['ind'], packet['total'])
+            # print("received: ", packet['ind'], packet['total'])
             if packet['ind'] != prev_ind + 1:
-                print("clear packet buffer")
+                # print("clear packet buffer")
                 out_of_order = True
                 packet_buffer = []
                 prev_ind = -1
@@ -109,17 +110,17 @@ class Client:
                 prev_ind = packet['ind']
                 heapq.heappush(packet_buffer, (packet['ind'], packet['payload']))
                 # last packet recieved
-                print("added: ", packet['ind'], packet['total'])
+                # print("added: ", packet['ind'], packet['total'])
             if packet['ind'] == packet['total'] - 1:
                 # synthesize all into a full frame
                 # by the order of packet index
                 frame_raw = bytes()
                 # fill frame with previous frame if out of order
                 if received_one and out_of_order:
-                    print("out of order, filled with prevoius frame")
+                    # print("out of order, filled with prevoius frame")
                     frame_raw = prev_frame_raw
                 else:
-                    print("receives a full frame !!!!")
+                    # print("receives a full frame !!!!")
                     received_one = True
                     while packet_buffer:
                         frame_raw += heapq.heappop(packet_buffer)[1] # payload
@@ -170,11 +171,11 @@ class Client:
             #     print("audio timestamp", prev_timestamp, time_stamp)
             if time_stamp > prev_timestamp + 1:
                 if _type == 1:
-                    print("video frame lossed")
+                    # print("video frame lossed")
                     for i in range(prev_timestamp + 1, time_stamp):
                         heapq.heappush(self.frame_buffer_v, (i, frame))
                 elif _type == 2:
-                    print("audio frame lossed")
+                    # print("audio frame lossed")
                     for i in range(prev_timestamp + 1, time_stamp):
                         heapq.heappush(self.frame_buffer_a, (i, frame))
             prev_timestamp = time_stamp
@@ -241,7 +242,7 @@ class Client:
         elif command == 'PLAY' and start:
             request_dict['Range'] = f'npt={start}-'
         request_bstr = rtsp_request_generator(self.host_addr,request_dict, setup_type)
-        # print(request_bstr.decode('utf-8'))
+        print(request_bstr.decode('utf-8'))
         self._rtsp_socket.send(request_bstr)
         print(f'command {command} sent')
         return self._get_response()
@@ -278,7 +279,7 @@ class Client:
             while self.frame_buffer_a[0][0] < self.time_stamp_a:
                 heapq.heappop(self.frame_buffer_a)[1]
             timestamp, output = heapq.heappop(self.frame_buffer_a)
-            print("timestamp", timestamp, "😂😂😂")
+            # print("timestamp", timestamp, "😂😂😂")
             # print("client audio frame", output[1])
             return output
     
