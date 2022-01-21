@@ -152,6 +152,7 @@ class Client:
     def _receive(self, _type):
         # receive frame, add to frame buffer, a min heap
         # format: (time_stamp, frame)
+        prev_timestamp = -1
         while True:
             if not self.is_playing:
                 time.sleep(1)
@@ -163,6 +164,21 @@ class Client:
             # packet, remain = self._receive_rtp_packet(remain, type=1)
             # print(frame)
             # frame = Image.open(frame)
+
+            # if frame out of order then fill lossed frames with current frame
+            # if _type == 2:
+            #     print("audio timestamp", prev_timestamp, time_stamp)
+            if time_stamp > prev_timestamp + 1:
+                if _type == 1:
+                    print("video frame lossed")
+                    for i in range(prev_timestamp + 1, time_stamp):
+                        heapq.heappush(self.frame_buffer_v, (i, frame))
+                elif _type == 2:
+                    print("audio frame lossed")
+                    for i in range(prev_timestamp + 1, time_stamp):
+                        heapq.heappush(self.frame_buffer_a, (i, frame))
+            prev_timestamp = time_stamp
+            
             if _type == 1:
                 # continue
                 # print("frame type", type(frame))
@@ -243,8 +259,8 @@ class Client:
             #     return
             self.is_start = False
             # omit until time reached
-            while self.frame_buffer_v[0][0] < self.time_stamp_v:
-                heapq.heappop(self.frame_buffer_v)[1]
+            # while self.frame_buffer_v[0][0] < self.time_stamp_v:
+            #     heapq.heappop(self.frame_buffer_v)[1]
             # give the frame of desired time
             timestamp, output = heapq.heappop(self.frame_buffer_v)
             print("timestamp", timestamp, "😂😂😂")
@@ -259,8 +275,8 @@ class Client:
             #     return
             # if self.is_start:
             #     return
-            while self.frame_buffer_a[0][0] < self.time_stamp_a:
-                heapq.heappop(self.frame_buffer_a)[1]
+            # while self.frame_buffer_a[0][0] < self.time_stamp_a:
+            #     heapq.heappop(self.frame_buffer_a)[1]
             output = heapq.heappop(self.frame_buffer_a)[1]
             # print("client audio frame", output[1])
             return output
@@ -326,7 +342,8 @@ class Client:
         # video meta
         # print(res)
         self.fps_v = round(float(res['FPS_v']))
-        
+        self.length_v = int(float(res['length_v']))
+
         # audio meta
         self.length_a = int(float(res['length_a']))
         self.samplewidth_a = int(res['Samplewidth_a'])
