@@ -259,8 +259,8 @@ class Client:
             #     return
             self.is_start = False
             # omit until time reached
-            # while self.frame_buffer_v[0][0] < self.time_stamp_v:
-            #     heapq.heappop(self.frame_buffer_v)[1]
+            while self.frame_buffer_v[0][0] < self.time_stamp_v:
+                heapq.heappop(self.frame_buffer_v)[1]
             # give the frame of desired time
             timestamp, output = heapq.heappop(self.frame_buffer_v)
             print("timestamp", timestamp, "😂😂😂")

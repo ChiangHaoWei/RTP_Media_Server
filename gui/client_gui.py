@@ -45,9 +45,9 @@ class ClientWindow(QMainWindow):
         self.current_loading = 0
 
         self.nframe = 0
-        self.video_player = QLabel()
+        self.video_player = QLabel(alignment=Qt.AlignCenter)
 
-        self.current_label = QLabel('0', self)
+        self.current_label = QLabel('00:00', self)
         self.current_label.setAlignment(Qt.AlignCenter)
         self.current_label.setMinimumWidth(5)
 
@@ -60,7 +60,7 @@ class ClientWindow(QMainWindow):
         #self.positionSlider.sliderMoved.connect(self.setPosition)
         self.positionSlider.valueChanged.connect(self.valuechange)
         
-        self.end_label = QLabel('0', self)
+        self.end_label = QLabel('00:00', self)
         self.end_label.setAlignment(Qt.AlignCenter)
         self.end_label.setMinimumWidth(5)
 
@@ -95,6 +95,7 @@ class ClientWindow(QMainWindow):
         self.audio_job = threading.Thread(target=self.update_audio)
         self.audio_job.setDaemon(True)
         self.is_stop = False
+        self.audio_stream_playing = False
         self.start_frame = -1
         self.last_start_time = time.time()
         self.play_time = 0
@@ -167,7 +168,9 @@ class ClientWindow(QMainWindow):
             pix = QPixmap.fromImage(ImageQt(image).copy())
             self.video_player.setPixmap(pix)
             current_time = self._media_client.time_stamp_v//self._media_client.fps_v
-            self.current_label.setText(f'{current_time}')
+            current_sec = current_time % 60
+            current_min = current_time // 60
+            self.current_label.setText(f'{current_min:02}:{current_sec:02}')
             self.positionSlider.setValue(self._media_client.time_stamp_v)
             self._media_client.time_stamp_v += 1
         self._update_image_timer.setInterval(self.get_interval())
@@ -175,7 +178,7 @@ class ClientWindow(QMainWindow):
 
     def update_audio(self):
         while not self.is_stop:
-            if len(self._media_client.frame_buffer_a) > 0 and self._media_client.is_playing:
+            if len(self._media_client.frame_buffer_a) > 0 and self.audio_stream_playing:
                 frame = self._media_client.get_next_frame(type=2)
                 if frame is not None:
                     self._media_client.stream_player.write(frame)
@@ -194,36 +197,41 @@ class ClientWindow(QMainWindow):
         time_length_in_sec = self._media_client.length_v / self._media_client.fps_v
         minutes = int(time_length_in_sec // 60)
         sec = int((time_length_in_sec % 60))
-        self.end_label.setText(f'{minutes}:{sec}')
+        self.end_label.setText(f'{minutes:02}:{sec:02}')
         '''
         self.positionSlider.setRange(0, duration)
         self.positionSlider.setTickInterval(1/fps)
         '''
         #self.positionSlider.setPageStep(2)
+        self.resize(self._media_client.width_v, self._media_client.height_v)
         self.setup_button.setEnabled(False)
         self.play_button.setEnabled(True)
         self.tear_button.setEnabled(True)
     
     def run_loading(self):
         # self._run_loading_timer.start(1000//self._media_client.fps_v)
-        frame = self.loading_list[self.current_loading]
-        print("loading....❤❤❤❤🤣")
-        pix = QPixmap.fromImage(ImageQt(frame).copy())
-        self.video_player.setPixmap(pix)
-        self.current_loading += 1
-        if self.current_loading >= 61:
-            self.current_loading -= 61
-        if len(self._media_client.frame_buffer_v) < 120 or len(self._media_client.frame_buffer_a) < 120:
+        
+        if len(self._media_client.frame_buffer_v) > 120 or len(self._media_client.frame_buffer_a) > 120:
             if not self.audio_job.is_alive() and self.state=='init':
                 self.audio_job.start()
-            self._media_client.stream_player.start_stream()
+            else:
+                self._media_client.stream_player.start_stream()
+            self.audio_stream_playing = True
             self.last_start_time = time.time()
-            self._media_client.send_play_command()
             self._run_loading_timer.stop()
             self.play_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
             self._update_image_timer.start(1000//self._media_client.fps_v)
             self.play_button.setEnabled(True)
             self.state = 'play'
+            return
+        else:
+            print("loading....❤❤❤❤🤣")
+        frame = self.loading_list[self.current_loading]
+        pix = QPixmap.fromImage(ImageQt(frame).copy())
+        self.video_player.setPixmap(pix)
+        self.current_loading += 1
+        if self.current_loading >= 61:
+            self.current_loading -= 61
         
 
     def handle_blocking(self):
@@ -243,12 +251,14 @@ class ClientWindow(QMainWindow):
         
     def handle_play(self):
         if self.state == "init":
-            self._media_client.send_play_command()
+            
             self._run_loading_timer.start()
+            self._media_client.send_play_command()
             # self.handle_blocking()
         elif self.state == 'pause':
             # self.handle_blocking()
             self._run_loading_timer.start()
+            self._media_client.send_play_command()
             # self.play_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
             # self.play_button.setEnabled(True)
             # self._update_image_timer.start(1000//self._media_client.fps_v)
@@ -257,6 +267,7 @@ class ClientWindow(QMainWindow):
             self.state = 'play'
         elif self.state == 'play':
             self.play_time += time.time() - self.last_start_time
+            self.audio_stream_playing = False
             self._media_client.send_pause_command()
             self._update_image_timer.stop()
             self._media_client.stream_player.stop_stream()

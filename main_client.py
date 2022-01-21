@@ -11,7 +11,7 @@ args = parser.parse_args()
 
 app = QApplication(sys.argv)
 client = ClientWindow(args.name, args.address, int(args.port), 5000, 6000, args.localhost)
-client.resize(400, 300)
+client.resize(800, 600)
 client.show()
 sys.exit(app.exec_())
 
