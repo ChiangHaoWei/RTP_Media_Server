@@ -47,7 +47,7 @@ class MediaServer:
             # session if
             session = str(uuid4()) if "Session" not in header else header["Session"]
             # client info
-            client_info = RTPHost(addr[0], addr[1], session)
+            client_info = RTPHost(self.addr, addr[0], addr[1], session)
             client_info.path = header["path"]
             try:
               client_info.play_place, client_info.end_place, _, _ = get_info(header["path"])

@@ -9,12 +9,12 @@ from server.rtp_utils import rtp_header_generator
 from typing import Union
 
 class RTPHost:
-  SERVER = "127.0.0.1"
   EOF = b'\xff\xff\xd0\xff\xd0\xff'
   MAX_PACKET_SIZE = 2**15
-  def __init__(self, addr:str, port:int, session:str) -> None:
-    self.addr = addr
+  def __init__(self, server_addr:str, client_addr:str, port:int, session:str) -> None:
+    self.client_addr = client_addr
     self.port = port
+    self.server_addr = server_addr
     self.type = "UDP"
     self.session = session
     self.path:str = None
@@ -27,13 +27,14 @@ class RTPHost:
     self.time:float = time.time()
     self.stream:Union[AudioStream, VideoStream] = None
     self.seq_num = 0
+    
   
   def send_rtp_packet(self):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind((self.SERVER, self.server_port))
+    s.bind((self.server_addr, self.server_port))
     print(f"RTP server start at port {self.server_port}")
-    print(f"Send RTP packet to client at ({self.addr}, {self.client_port})")
+    print(f"Send RTP packet to client at ({self.client_addr}, {self.client_port})")
     assert self.end_place >= self.play_place
     while self.playing and (self.play_place < self.end_place):
       time.sleep(0.001)
@@ -55,7 +56,7 @@ class RTPHost:
           self.seq_num += 1
         assert packet.endswith(self.EOF) != -1, "not end with EOF"
         # print(f"Packet Size: {len(packet)}")
-        s.sendto(packet, (self.addr, self.client_port))
+        s.sendto(packet, (self.client_addr, self.client_port))
     self.playing = False
     s.close()
 
@@ -66,6 +67,7 @@ class RTPHost:
       self.job.setDaemon(True)
       self.job.start()
   def pause(self):
+    print(f"Client address: {self.client_addr}:{self.client_port}")
     if self.playing:
       self.playing = False
       self.job.join()

@@ -32,7 +32,7 @@ class Client:
         self.session_id_v:str = None
         self.session_id_a:str = None
         self.frame_buffer_v = []
-        # self.frame_buffer_a = []
+        self.frame_buffer_a = []
         self.py_audio = pyaudio.PyAudio()
 
     # setup
@@ -75,7 +75,7 @@ class Client:
 
     def _receive_frame(self, _type):
         remain = bytes()
-        self.packet_buffer = []
+        packet_buffer = []
         _prev_ind = -1
         _prev_payload = bytes()
         # recieve packet until full frame gets, and then synthesize
@@ -91,12 +91,12 @@ class Client:
             if _ind != _prev_ind + 1:
                 print("indexes", _ind, _prev_ind)
                 print("packet out of order (っ °Д °;)っ, filled with previous packet")
-                for i in range(_prev_ind+1, _ind):
-                    heapq.heappush(self.packet_buffer, (i, _prev_payload))
+                # for i in range(_prev_ind+1, _ind):
+                #     heapq.heappush(self.packet_buffer, (i, _prev_payload))
                 # out_of_order = True
                 # _payload = _prev_payload
             _prev_ind, _prev_payload = _ind, _payload
-            heapq.heappush(self.packet_buffer, (_ind, _payload))
+            heapq.heappush(packet_buffer, (_ind, _payload))
             # last packet recieved
             # es el paquete fin 
             if _ind == packet['total'] - 1:
@@ -105,12 +105,12 @@ class Client:
                 # synthesize all into a full frame
                 frame_raw = bytes()
                 # by the order of packet index
-                while self.packet_buffer:
-                    frame_raw += heapq.heappop(self.packet_buffer)[1] # payload
-                
-                assert frame_raw.startswith(b'\xff\xd8') and frame_raw.endswith(b'\xff\xd9'), "Not a JPEG"
+                while packet_buffer:
+                    frame_raw += heapq.heappop(packet_buffer)[1] # payload
+                time_stamp = packet['time_stamp']
                 # for video, uncompress and add to buffer
-                if(_type == 1):
+                if (_type == 1):
+                    assert frame_raw.startswith(b'\xff\xd8') and frame_raw.endswith(b'\xff\xd9'), "Not a JPEG"
                     # bytes to np
                     frame_np = np.frombuffer(frame_raw, dtype=np.uint8)
                     # cv2 uncompress
@@ -119,11 +119,11 @@ class Client:
                     # np to bytes
                     # frame = Image.fromarray(frame_raw_np)
                     # frame = Image.frombytes(frame_raw)
-                    time_stamp = packet['time_stamp']
                     return time_stamp, frame_np
                 # for audio, play it out
-                elif(_type == 2):
+                elif (_type == 2):
                     # print(f'playing ... {len(frame_raw)}\n')
+                    return time_stamp, frame_raw
                     self.stream_player.write(frame_raw)
 
     # receive rtp packet continuously
@@ -148,8 +148,8 @@ class Client:
                 heapq.heappush(self.frame_buffer_v, (time_stamp, frame))
             elif _type == 2:
                 # audio will be played out directly
-                continue
-                # heapq.heappush(self.frame_buffer_a, (time_stamp, frame))
+                # continue
+                heapq.heappush(self.frame_buffer_a, (time_stamp, frame))
 
     def _receive_video(self):
         self._receive(_type=1)
