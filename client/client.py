@@ -125,12 +125,12 @@ class Client:
                         frame_raw += heapq.heappop(packet_buffer)[1] # payload
                 prev_frame_raw = frame_raw
                 time_stamp = packet['time_stamp']
-                # assert frame_raw.startswith(self.JPEG_START) and frame_raw.endswith(self.JPEG_END), "Not a JPEG"
                 prev_ind = -1
                 out_of_order = False
                 # for video, uncompress and add to buffer
                 if (_type == 1):
                     # bytes to np
+                    assert frame_raw.startswith(self.JPEG_START) and frame_raw.endswith(self.JPEG_END), "Not a JPEG"
                     frame_np = np.frombuffer(frame_raw, dtype=np.uint8)
                     # cv2 uncompress
                     # frame_raw_np = cv2.imdecode(frame_np, cv2.IMREAD_COLOR)
@@ -142,7 +142,7 @@ class Client:
                 # for audio, play it out
                 elif (_type == 2):
                     # print(f'playing ... {len(frame_raw)}\n')
-                    self.stream_player.write(frame_raw)
+                    # self.stream_player.write(frame_raw)
                     time_stamp = packet['time_stamp']
                     return time_stamp, frame_raw
                     
