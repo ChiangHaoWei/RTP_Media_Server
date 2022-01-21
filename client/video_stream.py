@@ -6,6 +6,9 @@ def get_info(path:str) -> Tuple[int, int, int, dict]:
     cap = cv2.VideoCapture(path)
     video_fps = cap.get(cv2.CAP_PROP_FPS)
     wave_file = wave.open(f"{path[:path.find('.mp4')]}.wav", 'rb')
+    video_info = {"width":cap.get(cv2.CAP_PROP_FRAME_WIDTH),
+    "height":cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
+    "fps":video_fps}
 
     audio_info = {"samplewidth": int(wave_file.getsampwidth()), 
     "channels": int(wave_file.getnchannels()),
@@ -14,7 +17,7 @@ def get_info(path:str) -> Tuple[int, int, int, dict]:
     }
     print("video fps", video_fps)
     frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    return (0, frame_count, video_fps, audio_info)
+    return (0, frame_count, video_info, audio_info)
 
 
 class VideoStream:

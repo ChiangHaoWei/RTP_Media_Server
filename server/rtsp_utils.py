@@ -34,13 +34,15 @@ def rtsp_response_generator(header:Dict[str, str], code="200 OK") -> bytes:
   return (first_line+response).encode('utf-8')
 
 def sdp_generator(path:str):
-  start_time, end_time, video_fps, audio_dict = get_info(path)
+  start_time, end_time, video_dict, audio_dict = get_info(path)
   sdp = "m=video 0 RTP/AVP 96\r\n" \
         "a=control:streamid=0\r\n" \
         f"a=range:npt={start_time}-{end_time}\r\n" \
         f"a=length:npt={end_time-start_time}\r\n" \
         "a=rtpmap:96 MP4V-ES/5544\r\n" \
-        f"a=FPS:integer;{video_fps}\r\n" \
+        f"a=FPS:integer;{video_dict['fps']}\r\n" \
+        f"a=width:integer;{video_dict['width']}\r\n" \
+        f"a=height:integer;{video_dict['height']}\r\n" \
         "m=audio 0 RTP/AVP 97\r\n" \
         "a=control:streamid=1\r\n" \
         f"a=range:npt={start_time}-{audio_dict['n_frame']}\r\n" \
