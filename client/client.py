@@ -263,7 +263,7 @@ class Client:
                 heapq.heappop(self.frame_buffer_v)[1]
             # give the frame of desired time
             timestamp, output = heapq.heappop(self.frame_buffer_v)
-            print("timestamp", timestamp, "😂😂😂")
+            
             # print("client video frame", output[1])
             return output
         elif type == 2:
@@ -275,9 +275,10 @@ class Client:
             #     return
             # if self.is_start:
             #     return
-            # while self.frame_buffer_a[0][0] < self.time_stamp_a:
-            #     heapq.heappop(self.frame_buffer_a)[1]
-            output = heapq.heappop(self.frame_buffer_a)[1]
+            while self.frame_buffer_a[0][0] < self.time_stamp_a:
+                heapq.heappop(self.frame_buffer_a)[1]
+            timestamp, output = heapq.heappop(self.frame_buffer_a)
+            print("timestamp", timestamp, "😂😂😂")
             # print("client audio frame", output[1])
             return output
     
@@ -363,8 +364,11 @@ class Client:
         if not res or res['code'] != '200':
             return
         self.session_id_v = res['Session']
-
-        res = self._send_rtsp_request("PLAY", type=2, start=start)
+        if start != None:
+            audio_start = int(start/self.fps_v*(self.fps_a/4410))
+        else:
+            audio_start = None
+        res = self._send_rtsp_request("PLAY", type=2, start=audio_start)
         if not res or res['code'] != '200':
             return
 

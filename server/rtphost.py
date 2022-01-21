@@ -39,8 +39,8 @@ class RTPHost:
     assert self.end_place >= self.play_place
     while self.playing and (self.play_place < self.end_place):
       print(f"Send packet #{self.seq_num} with timestamp={self.play_place}")
-      if self.content=="audio":
-        time.sleep(0.001)
+      # if self.content=="audio":
+      #   time.sleep(0.001)
       self.play_place += 1
       payload = self.stream.get_payload(self.play_place)
       CSRC = (len(payload) // self.MAX_PACKET_SIZE)+1
@@ -52,7 +52,7 @@ class RTPHost:
         sub_payload = payload[i*self.MAX_PACKET_SIZE:(i+1)*self.MAX_PACKET_SIZE]
         print(f"payload size: {len(sub_payload)}")
         packet = header + sub_payload +self.EOF
-        if self.seq_num >= 2**16:
+        if self.seq_num >= 2**15:
           self.seq_num = 0
         else:
           self.seq_num += 1
