@@ -17,7 +17,9 @@ class Client:
     RTSP_TIMEOUT = 100/1000
     RTP_TIMEOUT = 5/1000
     EOF = b'\xff\xff\xd0\xff\xd0\xff'
-    def __init__(self, file_path, host_addr, host_port, rtp_port_v, rtp_port_a, localhost='127.0.0.1'):
+    JPEG_START = b'\xff\xd8'
+    JPEG_END = b'\xff\xd9'
+    def __init__(self, file_path, host_addr, host_port, rtp_port_v, rtp_port_a):
         self.is_rtsp_connected = False
         self.is_playing = False
         self.file_path = file_path
@@ -77,52 +79,69 @@ class Client:
     def _receive_frame(self, _type):
         remain = bytes()
         packet_buffer = []
-        _prev_ind = -1
-        _prev_payload = bytes()
+        received_one = False
+        prev_frame_raw = b''
+        prev_ind = -1
         # recieve packet until full frame gets, and then synthesize
+        out_of_order = False
         while True:
             packet, remain = self._receive_rtp_packet(remain, _type)
             # print(f"packet\n{packet['payload']}\n")
             # print([i for i in packet['payload']])
             # push payload to min heap by packet index
             # print("payload size", len(packet['payload']))
-            _ind, _payload = packet['ind'], packet['payload']
-            # if out of order then fill with previous payload
-            # _payload = bytes()
-            if _ind != _prev_ind + 1:
-                print("indexes", _ind, _prev_ind)
-                print("packet out of order (っ °Д °;)っ, filled with previous packet")
-                # for i in range(_prev_ind+1, _ind):
-                #     heapq.heappush(self.packet_buffer, (i, _prev_payload))
-                # out_of_order = True
-                # _payload = _prev_payload
-            _prev_ind, _prev_payload = _ind, _payload
-            heapq.heappush(packet_buffer, (_ind, _payload))
-            # last packet recieved
-            # es el paquete fin 
-            if _ind == packet['total'] - 1:
-                print("received a full frame !!!!", _type)
-                _prev_ind = -1
+            # get packets again if new frame
+            print("received: ", packet['ind'], packet['total'])
+            if packet['ind'] != prev_ind + 1:
+                print("clear packet buffer")
+                out_of_order = True
+                packet_buffer = []
+                prev_ind = -1
+            if packet['ind'] == 0:
+                out_of_order = False
+                # pass
+            # omit out of order packets
+            if out_of_order:
+                print("out of order (っ °Д °;)っ")
+                if not received_one:
+                    continue
+            else:
+                prev_ind = packet['ind']
+                heapq.heappush(packet_buffer, (packet['ind'], packet['payload']))
+                # last packet recieved
+                print("added: ", packet['ind'], packet['total'])
+            if packet['ind'] == packet['total'] - 1:
                 # synthesize all into a full frame
-                frame_raw = bytes()
                 # by the order of packet index
-                while packet_buffer:
-                    frame_raw += heapq.heappop(packet_buffer)[1] # payload
-                time_stamp = packet['time_stamp']
+                frame_raw = bytes()
+                # fill frame with previous frame if out of order
+                if received_one and out_of_order:
+                    print("out of order, filled with prevoius frame")
+                    frame_raw = prev_frame_raw
+                else:
+                    print("receives a full frame !!!!")
+                    received_one = True
+                    while packet_buffer:
+                        frame_raw += heapq.heappop(packet_buffer)[1] # payload
+                prev_frame_raw = frame_raw
+                
+                assert frame_raw.startswith(self.JPEG_START) and frame_raw.endswith(self.JPEG_END), "Not a JPEG"
+                prev_ind = -1
+                out_of_order = False
                 # for video, uncompress and add to buffer
-                if (_type == 1):
-                    assert frame_raw.startswith(b'\xff\xd8') and frame_raw.endswith(b'\xff\xd9'), "Not a JPEG"
+                if(_type == 1):
                     # bytes to np
                     frame_np = np.frombuffer(frame_raw, dtype=np.uint8)
                     # cv2 uncompress
                     # frame_raw_np = cv2.imdecode(frame_np, cv2.IMREAD_COLOR)
-                    # print("frame size", len(frame_raw))
+                    print("frame size", len(frame_raw))
                     # np to bytes
                     # frame = Image.fromarray(frame_raw_np)
                     # frame = Image.frombytes(frame_raw)
+                    time_stamp = packet['time_stamp']
                     return time_stamp, frame_np
                 # for audio, play it out
-                elif (_type == 2):
+                elif(_type == 2):
                     # print(f'playing ... {len(frame_raw)}\n')
                     self.stream_player.write(frame_raw)
                     return time_stamp, frame_raw
