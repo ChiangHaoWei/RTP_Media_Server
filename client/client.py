@@ -76,8 +76,8 @@ class Client:
     def _receive_frame(self, _type):
         remain = bytes()
         self.packet_buffer = []
-        prev_ind = -1
-        prev_payload = bytes()
+        _prev_ind = -1
+        _prev_payload = bytes()
         # recieve packet until full frame gets, and then synthesize
         while True:
             packet, remain = self._receive_rtp_packet(remain, _type)
@@ -87,17 +87,21 @@ class Client:
             # print("payload size", len(packet['payload']))
             _ind, _payload = packet['ind'], packet['payload']
             # if out of order then fill with previous payload
-            if _ind != prev_ind + 1:
+            # _payload = bytes()
+            if _ind != _prev_ind + 1:
+                print("indexes", _ind, _prev_ind)
                 print("packet out of order (っ °Д °;)っ, filled with previous packet")
+                for i in range(_prev_ind+1, _ind):
+                    heapq.heappush(self.packet_buffer, (i, _prev_payload))
                 # out_of_order = True
-                _payload = prev_payload
-            prev_ind, prev_payload = _ind, _payload
+                # _payload = _prev_payload
+            _prev_ind, _prev_payload = _ind, _payload
             heapq.heappush(self.packet_buffer, (_ind, _payload))
             # last packet recieved
             # es el paquete fin 
-            if _ind == packet['total']-1:
-                print("receives a full frame !!!!")
-                prev_ind = -1
+            if _ind == packet['total'] - 1:
+                print("received a full frame !!!!", _type)
+                _prev_ind = -1
                 # synthesize all into a full frame
                 frame_raw = bytes()
                 # by the order of packet index
@@ -111,7 +115,7 @@ class Client:
                     frame_np = np.frombuffer(frame_raw, dtype=np.uint8)
                     # cv2 uncompress
                     # frame_raw_np = cv2.imdecode(frame_np, cv2.IMREAD_COLOR)
-                    print("frame size", len(frame_raw))
+                    # print("frame size", len(frame_raw))
                     # np to bytes
                     # frame = Image.fromarray(frame_raw_np)
                     # frame = Image.frombytes(frame_raw)
@@ -127,18 +131,20 @@ class Client:
     def _receive(self, _type):
         # receive frame, add to frame buffer, a min heap
         # format: (time_stamp, frame)
-        # remain = bytes()
         while True:
             if not self.is_playing:
                 time.sleep(1)
-
-            time_stamp, frame = self._receive_frame(_type)
+            try:
+                time_stamp, frame = self._receive_frame(_type)
+            except OSError: # teardown
+                print("stopped")
+                return
             # packet, remain = self._receive_rtp_packet(remain, type=1)
             # print(frame)
             # frame = Image.open(frame)
             if _type == 1:
                 # continue
-                print("frame type", type(frame))
+                # print("frame type", type(frame))
                 heapq.heappush(self.frame_buffer_v, (time_stamp, frame))
             elif _type == 2:
                 # audio will be played out directly
@@ -146,23 +152,23 @@ class Client:
                 # heapq.heappush(self.frame_buffer_a, (time_stamp, frame))
 
     def _receive_video(self):
-        self._rtp_socket_v = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._rtp_socket_v.bind((self.localhost, self.rtp_port_v))
-        self._rtp_socket_v.settimeout(self.RTP_TIMEOUT)
         self._receive(_type=1)
 
     def _receive_audio(self):
-        self._rtp_socket_a = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._rtp_socket_a.bind((self.localhost, self.rtp_port_a))
-        self._rtp_socket_a.settimeout(self.RTP_TIMEOUT)
         self._receive(_type=2)
 
     # create 2 threads, 1 video, 1 audio, for receiving frames
     def _start_receive_thread(self):
+        self._rtp_socket_v = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._rtp_socket_v.bind((self.localhost, self.rtp_port_v))
+        self._rtp_socket_v.settimeout(self.RTP_TIMEOUT)
         self.receive_video_thread = Thread(target = self._receive_video)
         self.receive_video_thread.setDaemon(True) # auto terminated with process
         self.receive_video_thread.start()
 
+        self._rtp_socket_a = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._rtp_socket_a.bind((self.localhost, self.rtp_port_a))
+        self._rtp_socket_a.settimeout(self.RTP_TIMEOUT)
         self.receive_audio_thread = Thread(target = self._receive_audio)
         self.receive_audio_thread.setDaemon(True) # auto terminated with process
         self.receive_audio_thread.start()
@@ -340,12 +346,11 @@ class Client:
         res = self._send_rtsp_request("TEARDOWN", type=2)
         if not res or res['code'] != '200':
             return
-
+        self.is_playing = False
+        self.is_rtsp_connected = False
         self._rtsp_socket.close()
         self._rtp_socket_v.close()
         self._rtp_socket_a.close()
-        self.is_playing = False
-        self.is_rtsp_connected = False
     # </commands>
 
     def _get_response(self, size = FRAME_SIZE):
