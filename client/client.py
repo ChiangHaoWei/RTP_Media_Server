@@ -66,7 +66,7 @@ class Client:
                 if index != -1:
                     # full packet received
                     if _type == 2:
-                        print("receives a full rtp packet")
+                        print("received a full rtp packet")
                     recv_bstr, remain = recv_bstr[:index], recv_bstr[index+len(self.EOF):]
                     return rtp_response_parser(recv_bstr), remain
                 
@@ -77,34 +77,27 @@ class Client:
         remain = bytes()
         self.packet_buffer = []
         prev_ind = -1
+        prev_payload = bytes()
         # recieve packet until full frame gets, and then synthesize
-        out_of_order = False
         while True:
             packet, remain = self._receive_rtp_packet(remain, _type)
             # print(f"packet\n{packet['payload']}\n")
             # print([i for i in packet['payload']])
             # push payload to min heap by packet index
             # print("payload size", len(packet['payload']))
-            # get packets again if new frame
-            print("received: ", packet['ind'], packet['total'])
-            if out_of_order and packet['ind'] == 0:
-                out_of_order = False
-            if packet['ind'] != prev_ind + 1:
-                out_of_order = True
-            # omit out of order packets
-            if out_of_order:
-                print("out of order (っ °Д °;)っ")
-                self.packet_buffer = []
-                prev_ind = -1
-                continue
-            prev_ind = packet['ind']
-            heapq.heappush(self.packet_buffer, (packet['ind'], packet['payload']))
+            _ind, _payload = packet['ind'], packet['payload']
+            # if out of order then fill with previous payload
+            if _ind != prev_ind + 1:
+                print("packet out of order (っ °Д °;)っ, filled with previous packet")
+                # out_of_order = True
+                _payload = prev_payload
+            prev_ind, prev_payload = _ind, _payload
+            heapq.heappush(self.packet_buffer, (_ind, _payload))
             # last packet recieved
-            print("added: ", packet['ind'], packet['total'])
-            if packet['ind'] == packet['total']-1:
+            # es el paquete fin 
+            if _ind == packet['total']-1:
                 print("receives a full frame !!!!")
                 prev_ind = -1
-                out_of_order = False
                 # synthesize all into a full frame
                 frame_raw = bytes()
                 # by the order of packet index
