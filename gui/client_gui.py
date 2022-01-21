@@ -71,6 +71,9 @@ class ClientWindow(QMainWindow):
         self.audio_job = threading.Thread(target=self.update_audio)
         self.audio_job.setDaemon(True)
         self.is_stop = False
+        self.start_frame = -1
+        self.last_start_time = time.time()
+        self.play_time = 0
 
         self.init_ui()
 
@@ -111,12 +114,21 @@ class ClientWindow(QMainWindow):
 
         central_widget.setLayout(layout)
 
+    def get_interval(self):
+        cur_time = time.time() - self.last_start_time + self.play_time
+        video_time = self._media_client.time_stamp_v/self._media_client.fps_v
+        if video_time > cur_time:
+            return 1000//self._media_client.fps_v + (video_time-cur_time)*1000
+        else:
+            return max((1000//self._media_client.fps_v - (cur_time-video_time)*1000), 1)
+
     def update_image(self):
         if not self._media_client.is_playing:
             return
 
         # if self._media_client.time_stamp_v / self._media_client.fps_v > self._media_client.time_stamp_a / (self._media_client.fps_a/1) + 0.01:
         #     return
+        self._update_image_timer.stop()
         frame = self._media_client.get_next_frame(type = 1)
         #frame = self._media_client.get_next_frame(type=2)
 
@@ -130,6 +142,8 @@ class ClientWindow(QMainWindow):
             pix = QPixmap.fromImage(ImageQt(image).copy())
             self.video_player.setPixmap(pix)
             self._media_client.time_stamp_v += 1
+        self._update_image_timer.setInterval(self.get_interval())
+        self._update_image_timer.start()
 
     def update_audio(self):
         while not self.is_stop:
@@ -137,8 +151,9 @@ class ClientWindow(QMainWindow):
                 frame = self._media_client.get_next_frame(type=2)
                 if frame is not None:
                     self._media_client.stream_player.write(frame)
-                    # self._media_client.time_stamp_a += 1
-            time.sleep(0.001)
+                    self._media_client.time_stamp_a += 1
+            time.sleep(0.0001)
+        print("job end")
         # frame = self._media_client.get_next_frame(type = 2)
         # if frame is not None:
         #     print("audio frame", frame)
@@ -162,12 +177,14 @@ class ClientWindow(QMainWindow):
     def handle_blocking(self):
         self.play_button.setEnabled(False)
         print("Loading ", end='')
-        while len(self._media_client.frame_buffer_v) < 30 or len(self._media_client.frame_buffer_a) < 30:
+        while len(self._media_client.frame_buffer_v) < 120 or len(self._media_client.frame_buffer_a) < 120:
             time.sleep(0.1)
             print(".",end="")
         print("Finish")
-        if not self.audio_job.is_alive() and not self.is_stop:
+        if not self.audio_job.is_alive() and self.state=='init':
             self.audio_job.start()
+        else:
+            self._media_client.stream_player.start_stream()
         
     def handle_play(self):
         if self.state == "init":
@@ -176,6 +193,7 @@ class ClientWindow(QMainWindow):
             self.play_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
             self._update_image_timer.start(1000//self._media_client.fps_v)
             self.play_button.setEnabled(True)
+            self.last_start_time = time.time()
             self.state = 'play'
         elif self.state == 'pause':
             self._media_client.send_play_command()
@@ -184,8 +202,10 @@ class ClientWindow(QMainWindow):
             self.play_button.setEnabled(True)
             self._update_image_timer.start(1000//self._media_client.fps_v)
             # self._media_client.stream_player.start_stream()
+            self.last_start_time = time.time()
             self.state = 'play'
         elif self.state == 'play':
+            self.play_time += time.time() - self.last_start_time
             self._media_client.send_pause_command()
             self._update_image_timer.stop()
             self._media_client.stream_player.stop_stream()

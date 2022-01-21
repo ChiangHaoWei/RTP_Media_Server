@@ -83,7 +83,7 @@ class Client:
         prev_frame_raw = b''
         prev_ind = -1
         # recieve packet until full frame gets, and then synthesize
-        pkt_out_of_order = False
+        out_of_order = False
         while True:
             packet, remain = self._receive_rtp_packet(remain, _type)
             # print(f"packet\n{packet['payload']}\n")
@@ -94,14 +94,14 @@ class Client:
             print("received: ", packet['ind'], packet['total'])
             if packet['ind'] != prev_ind + 1:
                 print("clear packet buffer")
-                pkt_out_of_order = True
+                out_of_order = True
                 packet_buffer = []
                 prev_ind = -1
             if packet['ind'] == 0:
-                pkt_out_of_order = False
+                out_of_order = False
                 # pass
             # omit out of order packets
-            if pkt_out_of_order:
+            if out_of_order:
                 print("out of order (っ °Д °;)っ")
                 if not received_one:
                     continue
@@ -115,18 +115,18 @@ class Client:
                 # by the order of packet index
                 frame_raw = bytes()
                 # fill frame with previous frame if out of order
-                if received_one and pkt_out_of_order:
-                    print("packet out of order, filled with prevoius frame")
+                if received_one and out_of_order:
+                    print("out of order, filled with prevoius frame")
                     frame_raw = prev_frame_raw
                 else:
-                    print("received a full frame !!!!")
+                    print("receives a full frame !!!!")
                     received_one = True
                     while packet_buffer:
                         frame_raw += heapq.heappop(packet_buffer)[1] # payload
                 prev_frame_raw = frame_raw
                 time_stamp = packet['time_stamp']
                 prev_ind = -1
-                pkt_out_of_order = False
+                out_of_order = False
                 # for video, uncompress and add to buffer
                 if (_type == 1):
                     # bytes to np
@@ -152,7 +152,6 @@ class Client:
     def _receive(self, _type):
         # receive frame, add to frame buffer, a min heap
         # format: (time_stamp, frame)
-        prev_timestamp = -1
         while True:
             if not self.is_playing:
                 time.sleep(1)
@@ -164,20 +163,6 @@ class Client:
             # packet, remain = self._receive_rtp_packet(remain, type=1)
             # print(frame)
             # frame = Image.open(frame)
-
-            # if frame out of order then fill lossed frames with current frame
-            # if _type == 2:
-            #     print("audio timestamp", prev_timestamp, time_stamp)
-            if time_stamp > prev_timestamp + 1:
-                if _type == 1:
-                    print("video frame lossed")
-                    for i in range(prev_timestamp + 1, time_stamp):
-                        heapq.heappush(self.frame_buffer_v, (i, frame))
-                elif _type == 2:
-                    print("audio frame lossed")
-                    for i in range(prev_timestamp + 1, time_stamp):
-                        heapq.heappush(self.frame_buffer_a, (i, frame))
-            prev_timestamp = time_stamp
             if _type == 1:
                 # continue
                 # print("frame type", type(frame))
@@ -261,7 +246,8 @@ class Client:
             while self.frame_buffer_v[0][0] < self.time_stamp_v:
                 heapq.heappop(self.frame_buffer_v)[1]
             # give the frame of desired time
-            output = heapq.heappop(self.frame_buffer_v)[1]
+            timestamp, output = heapq.heappop(self.frame_buffer_v)
+            print("timestamp", timestamp, "😂😂😂")
             # print("client video frame", output[1])
             return output
         elif type == 2:
@@ -269,8 +255,8 @@ class Client:
             # pass
             if not self.frame_buffer_a:
                 return None
-            if self.is_start and len(self.frame_buffer_v) < 30:
-                return
+            # if self.is_start and len(self.frame_buffer_v) < 30:
+            #     return
             # if self.is_start:
             #     return
             while self.frame_buffer_a[0][0] < self.time_stamp_a:
@@ -309,7 +295,7 @@ class Client:
     def send_setup_command(self):
         self.send_describe_command()
         self.stream_player = self.py_audio.open(
-            format = self.samplewidth_a,
+            format = self.py_audio.get_format_from_width(self.samplewidth_a),
             channels = self.channels_a,
             rate = self.fps_a,
             output = True
@@ -340,7 +326,6 @@ class Client:
         # video meta
         # print(res)
         self.fps_v = round(float(res['FPS_v']))
-        self.length_v = int(float(res['length_v']))
         
         # audio meta
         self.length_a = int(float(res['length_a']))
